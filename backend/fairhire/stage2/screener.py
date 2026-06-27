@@ -118,18 +118,24 @@ def contrastive_loss(
     role_ids: torch.Tensor,
     margin: float = 0.5,
 ) -> torch.Tensor:
+    device = scores.device
     n = scores.size(0)
-    loss = 0.0
-    count = 0
-    for i in range(n):
-        same_role = (role_ids == role_ids[i]) & (torch.arange(n) != i)
-        diff_role = role_ids != role_ids[i]
-        if same_role.any() and diff_role.any():
-            pos = scores[same_role].mean()
-            neg = scores[diff_role].mean()
-            loss += F.relu(margin - pos + neg)
-            count += 1
-    return loss / max(count, 1)
+    role_eq = (role_ids.unsqueeze(0) == role_ids.unsqueeze(1)).float()
+    eye = torch.eye(n, device=device)
+    role_same = role_eq - eye
+    role_diff = 1.0 - role_eq
+
+    pos_sum = scores.unsqueeze(0) * role_same
+    neg_sum = scores.unsqueeze(0) * role_diff
+
+    pos_mean = pos_sum.sum(dim=1) / role_same.sum(dim=1).clamp(min=1)
+    neg_mean = neg_sum.sum(dim=1) / role_diff.sum(dim=1).clamp(min=1)
+
+    per_sample_loss = F.relu(margin - pos_mean + neg_mean)
+    valid = (role_same.sum(dim=1) > 0) & (role_diff.sum(dim=1) > 0)
+    if valid.any():
+        return per_sample_loss[valid].mean()
+    return torch.tensor(0.0, device=device)
 
 
 def train_screener(
