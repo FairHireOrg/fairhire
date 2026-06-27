@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.pt
+*.jsonl
+*.png
+dataset.csv
+plots/
+.venv/
+venv/
+node_modules/
+*.egg-info/
+dist/
+build/
+.DS_Store
+.env
