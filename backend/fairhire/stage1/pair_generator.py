@@ -74,12 +74,12 @@ Resume to rewrite:
 {cleaned}"""
 
     response = client.chat.completions.create(
-        model=config.deepseek_model,
+        model=config.llm_model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ],
-        temperature=config.deepseek_temperature,
+        temperature=config.llm_temperature,
         max_tokens=4096,
     )
     return response.choices[0].message.content.strip()
@@ -123,38 +123,52 @@ def generate_counterfactual_pairs(
     df: pd.DataFrame,
     config: Config,
 ) -> list[dict[str, Any]]:
-    if not config.deepseek_api_key:
+    if not config.llm_api_key:
         raise ValueError(
-            "DEEPSEEK_API_KEY environment variable not set. "
-            "Set it via: export DEEPSEEK_API_KEY=your-key"
+            "FAIRHIRE_LLM_KEY not set. "
+            "Set it via: export FAIRHIRE_LLM_KEY=your-key"
         )
 
     client = OpenAI(
-        api_key=config.deepseek_api_key,
-        base_url="https://api.deepseek.com",
+        api_key=config.llm_api_key,
+        base_url=config.llm_base_url,
     )
+
+    print(f"Checking LLM connectivity: {config.llm_base_url} model={config.llm_model}...")
+    try:
+        test_resp = client.chat.completions.create(
+            model=config.llm_model,
+            messages=[{"role": "user", "content": "Say 'ok' and nothing else."}],
+            max_tokens=5,
+            timeout=30,
+        )
+        print(f"LLM OK: {test_resp.choices[0].message.content.strip()}")
+    except Exception as e:
+        raise RuntimeError(f"Failed to reach LLM at {config.llm_base_url}: {e}")
 
     if config.subset_size > 0:
         df = df.sample(n=min(config.subset_size, len(df)), random_state=config.seed)
 
     pairs = []
-    with ThreadPoolExecutor(max_workers=config.deepseek_max_concurrency) as executor:
-        futures = {
-            executor.submit(_build_pair, client, row, config): row["ID"]
-            for _, row in df.iterrows()
-        }
-        for future in tqdm(
-            as_completed(futures),
-            total=len(futures),
-            desc="Generating counterfactual pairs",
-        ):
-            result = future.result()
-            if result:
-                pairs.append(result)
-
-    with open(config.pairs_output_path, "w") as f:
-        for pair in pairs:
-            f.write(json.dumps(pair) + "\n")
+    f = open(config.pairs_output_path, "w")
+    try:
+        with ThreadPoolExecutor(max_workers=config.llm_max_concurrency) as executor:
+            futures = {
+                executor.submit(_build_pair, client, row, config): row["ID"]
+                for _, row in df.iterrows()
+            }
+            for future in tqdm(
+                as_completed(futures),
+                total=len(futures),
+                desc="Generating counterfactual pairs",
+            ):
+                result = future.result()
+                if result:
+                    pairs.append(result)
+                    f.write(json.dumps(result) + "\n")
+                    f.flush()
+    finally:
+        f.close()
 
     print(f"Generated {len(pairs)} pairs -> {config.pairs_output_path}")
     return pairs

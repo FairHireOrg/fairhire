@@ -7,7 +7,7 @@ from sentence_transformers import SentenceTransformer
 
 from fairhire.config import Config
 from fairhire.data import load_dataset
-from fairhire.stage1 import generate_counterfactual_pairs
+from fairhire.stage1 import generate_counterfactual_pairs, generate_pairs_regex
 from fairhire.stage2 import load_pairs_for_training, train_screener
 from fairhire.stage2.screener import Screener
 from fairhire.stage3 import measure_disparities
@@ -26,13 +26,18 @@ def main():
     parser = argparse.ArgumentParser(description="FairHire AI Bias Audit Pipeline")
     parser.add_argument("--stage", type=int, default=0, choices=[0, 1, 2, 3, 4],
                         help="1=pairs, 2=train, 3=measure, 4=viz. 0=all.")
-    parser.add_argument("--subset", type=int, default=0,
-                        help="Process only N records for quick runs")
+    parser.add_argument("--subset", type=int, default=None,
+                        help="Number of records to process (default: 100). Use 0 for all.")
     parser.add_argument("--pairs-file", type=str, default=None,
                         help="Path to pre-generated pairs JSONL (skip stage 1)")
+    parser.add_argument("--llm", action="store_true",
+                        help="Use LLM for pair generation instead of regex (slow)")
     args = parser.parse_args()
 
-    config = Config(subset_size=args.subset)
+    kwargs = {}
+    if args.subset is not None:
+        kwargs["subset_size"] = args.subset
+    config = Config(**kwargs)
     if args.pairs_file:
         config.pairs_output_path = args.pairs_file
     set_seed(config.seed)
@@ -47,7 +52,12 @@ def main():
         print(f"Loaded {len(df)} records across {df['Role'].nunique()} roles")
         if config.subset_size > 0:
             print(f"Subset mode: {config.subset_size} records")
-        generate_counterfactual_pairs(df, config)
+        if args.llm:
+            print("Using LLM-based generator")
+            generate_counterfactual_pairs(df, config)
+        else:
+            print("Using regex-based generator")
+            generate_pairs_regex(df, config)
 
     if args.stage in (0, 2):
         print("\n[Stage 2] Training attention-weighted screener...")

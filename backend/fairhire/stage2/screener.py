@@ -58,10 +58,20 @@ class ContrastiveDataset(Dataset):
 
 
 def load_pairs_for_training(config: Config) -> list[dict]:
+    if not os.path.exists(config.pairs_output_path):
+        raise FileNotFoundError(
+            f"Pairs file not found: {config.pairs_output_path}\n"
+            "Run Stage 1 first: python run_pipeline.py --stage 1"
+        )
     pairs = []
     with open(config.pairs_output_path, "r") as f:
         for line in f:
             pairs.append(json.loads(line))
+    if not pairs:
+        raise RuntimeError(
+            f"Pairs file is empty: {config.pairs_output_path}\n"
+            "Run Stage 1 first: python run_pipeline.py --stage 1"
+        )
     return pairs
 
 

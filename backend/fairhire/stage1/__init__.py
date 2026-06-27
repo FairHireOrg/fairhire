@@ -1,1 +1,2 @@
 from .pair_generator import generate_counterfactual_pairs
+from .regex_generator import generate_pairs_regex
