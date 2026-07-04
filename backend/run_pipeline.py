@@ -11,7 +11,7 @@ from fairhire.stage1 import generate_counterfactual_pairs, generate_pairs_regex
 from fairhire.stage2 import load_pairs_for_training, train_screener
 from fairhire.stage2.screener import Screener
 from fairhire.stage3 import measure_disparities
-from fairhire.viz import generate_all_plots
+from fairhire.viz import generate_all_plots, run_stats
 
 
 def set_seed(seed: int):
@@ -24,8 +24,8 @@ def set_seed(seed: int):
 
 def main():
     parser = argparse.ArgumentParser(description="FairHire AI Bias Audit Pipeline")
-    parser.add_argument("--stage", type=int, default=0, choices=[0, 1, 2, 3, 4],
-                        help="1=pairs, 2=train, 3=measure, 4=viz. 0=all.")
+    parser.add_argument("--stage", type=int, default=0, choices=[0, 1, 2, 3, 4, 5],
+                        help="1=pairs, 2=train, 3=measure, 4=viz, 5=stats. 0=all.")
     parser.add_argument("--subset", type=int, default=None,
                         help="Number of records to process (default: 100). Use 0 for all.")
     parser.add_argument("--pairs-file", type=str, default=None,
@@ -79,6 +79,10 @@ def main():
     if args.stage in (0, 4):
         print("\n[Stage 4] Generating visualizations...")
         generate_all_plots(config)
+
+    if args.stage in (0, 5) or args.stage == 5:
+        print("\n[Stage 5] Running statistical analysis...")
+        run_stats(config)
 
     print("\nPipeline complete.")
 
