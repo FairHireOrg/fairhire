@@ -215,6 +215,27 @@ def _replace_name(resume: str, old_name: str | None, new_name: str) -> str:
     last_new = new_name.split()[-1] if " " in new_name else ""
 
     text = resume
+
+    new_parts = [p.lower().replace("'", "").replace("-", "") for p in new_name.split()]
+    old_parts = [p.lower().replace("'", "").replace("-", "") for p in old_name.split()]
+
+    replacements = []
+    for start in range(len(old_parts)):
+        for end in range(start + 1, len(old_parts) + 1):
+            old_seg = "".join(old_parts[start:end])
+            if len(old_seg) < 3:
+                continue
+            new_start = min(start, len(new_parts) - 1)
+            new_end = min(end, len(new_parts))
+            new_seg = "".join(new_parts[new_start:new_end])
+            replacements.append((re.compile(re.escape(old_seg), re.IGNORECASE), new_seg))
+            old_dot = ".".join(old_parts[start:end])
+            new_dot = ".".join(new_parts[new_start:new_end])
+            replacements.append((re.compile(re.escape(old_dot), re.IGNORECASE), new_dot))
+
+    for pattern, replacement in sorted(replacements, key=lambda x: -len(x[0].pattern)):
+        text = pattern.sub(replacement, text)
+
     text = re.sub(
         re.compile(re.escape(old_name), re.IGNORECASE),
         new_name,
