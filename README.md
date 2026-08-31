@@ -1,10 +1,13 @@
 # FairHire
 
 Deterministic **Resume–JD matching** — NER-style parsing, rule-based scoring,
-and a visual map of connecting lines between overlapping terms. Scoring and
-matching are **always deterministic**; an optional DeepSeek extraction layer
-only decides *what to look for* (soft skills, degrees, years) and never decides
-*whether a match exists*.
+and a visual map of connecting lines between overlapping terms. The **score** is
+always computed by fixed rules over confirmed matches. An optional DeepSeek layer
+handles the semantic work a curated ontology can't: extracting requirements and
+*turning what a resume didn't spell out into a questionnaire* — e.g. a resume
+with "TypeScript" gets a *suggest* for the "JavaScript" requirement, and you
+confirm it. The LLM only suggests whether something is satisfied; it never sets
+the grade, so the same inputs and answers always yield the same score.
 
 ## Layout
 
@@ -14,24 +17,25 @@ only decides *what to look for* (soft skills, degrees, years) and never decides
 - `backend/` — FastAPI. Pipeline:
 
   ```
-  parse (regex + curated ontology)                       -> parse_job_description / parse_resume
-  extract (optional DeepSeek: requirements + evidence)   -> llm_extract.py   [hybrid mode]
-  match  (exact / contextual / family / fuzzy)           -> matcher.py / hybrid.py
+  parse  (regex + curated ontology)                      -> parse_job_description / parse_resume
+  extract(optional DeepSeek: requirements + evidence)    -> llm_extract.py      [hybrid mode]
+   match (exact / contextual / family) lexical, then     -> matcher.py / hybrid.py
+          LLM-suggested confirm list for the rest        -> llm_extract.py::judge_requirements
   score  (weighted, explainable dimensions)              -> score.py
   ```
 
 ## Modes
 
-| Mode | When | Requirements extracted from JD |
-| ---- | ---- | ------------------------------- |
-| `deterministic` | no `FAIRHIRE_DEEPSEEK_KEY` | only named technologies from the curated ontology |
-| `hybrid` | DeepSeek key configured | skills + soft skills + degrees + years + generic abilities |
+| Mode | When | Matching |
+| ---- | ---- | -------- |
+| `deterministic` | no `FAIRHIRE_DEEPSEEK_KEY` | lexical only (exact / contains / family) |
+| `hybrid` | DeepSeek key configured | lexical tiers + LLM-suggested questionnaire (you confirm super-sets, synonyms, novel skills) |
 
-For JDs that are mostly soft (e.g. "Bachelor's in CS, analytical skills,
-develop and maintain software"), deterministic-only mode finds few or zero
-terms. Set a DeepSeek key to lift those requirements out of the JD and match
-them deterministically against the resume (degree regex, soft-skill evidence,
-years comparison, token overlap).
+The LLM never assigns a score — it only *suggests* whether a requirement is
+satisfied (with a quoted resume span as evidence), and those suggestions become a
+questionnaire. Scoring stays a fixed rule over confirmed matches, so the same
+inputs and answers yield the same grade and candidates are not graded
+arbitrarily.
 
 ## Setup
 
@@ -63,7 +67,7 @@ python fit_resume.py resume.pdf --jd job.txt --json
 | Sections | `fairhire/fitness/sections.py` | summary / experience / projects / publications / skills / education |
 | Skill tagging | `fairhire/fitness/ontology.py` | ~150 curated terms (languages, frameworks, DBs, cloud, ML) tagged with exact char offsets |
 | LLM extraction | `fairhire/fitness/llm_extract.py` | optional DeepSeek: structured JD requirements + resume evidence |
-| Matching | `fairhire/fitness/matcher.py` + `hybrid.py` | deterministic tiers: **exact** → **contextual** → **family** (SQL ⇒ PostgreSQL) → **fuzzy**; hybrid matches soft/degree/years/ability requirements |
+| Matching | `fairhire/fitness/matcher.py` + `hybrid.py` | lexical tiers: **exact** → **contextual** → **family** (SQL ⇒ PostgreSQL); then, in hybrid mode, the LLM only *suggests* the leftover requirements (`judge_requirements`) as a confirm list for the user |
 | Scoring | `fairhire/fitness/score.py` | Required (0.55) + nice-to-have (0.10) + structure (0.15) + experience depth (0.20) |
 
 Tests (no pytest needed):

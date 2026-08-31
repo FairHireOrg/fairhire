@@ -1,19 +1,41 @@
 @import "tailwindcss";
 
+/*
+ * FairHire light theme.
+ *
+ * A single set of semantic tokens keeps a consistent, accessible surface:
+ *   - `base`    page background (warm paper)
+ *   - `panel`   raised surfaces (cards, panes)
+ *   - `panel-2` nested / secondary surfaces
+ *   - `inset`   wells, inline chips, code areas
+ *   - `line` / `line-strong`  hairlines and emphasis borders
+ *   - `ink` / `muted` / `faint`  text hierarchy (AA+ on `base`)
+ *   - `accent`  primary interactive + brand (gold)
+ *   - `ok` / `warn`  semantic status
+ *
+ * All text colors are tuned for contrast on the light `base`/`panel`
+ * background. Keep values in one place so a future dark mode can flip them.
+ */
+
 :root {
-  --base: #0c0f0d;
-  --panel: #121614;
-  --panel-2: #181d1a;
-  --inset: #070908;
-  --line: #232a26;
-  --line-strong: #38413b;
-  --ink: #e8e7e2;
-  --muted: #9aa29c;
-  --faint: #5c655e;
-  --accent: #e5a83d;
-  --accent-ink: #0c0f0d;
-  --ok: #8fc79b;
-  --warn: #ff8a5c;
+  color-scheme: light;
+
+  --base: #f6f4ee;
+  --panel: #ffffff;
+  --panel-2: #faf8f2;
+  --inset: #f1eee7;
+  --line: #e4e0d4;
+  --line-strong: #cfc9ba;
+  --ink: #1b1a16;
+  --muted: #57524a;
+  --faint: #6f6a5b;
+  --accent: #8a5a00;
+  --accent-ink: #fffdf8;
+  --accent-soft: rgba(138, 90, 0, 0.09);
+  --ok: #23743f;
+  --ok-soft: rgba(35, 116, 63, 0.12);
+  --warn: #b23a1c;
+  --warn-soft: rgba(178, 58, 28, 0.12);
 }
 
 @theme inline {
@@ -28,24 +50,36 @@
   --color-faint: var(--faint);
   --color-accent: var(--accent);
   --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
   --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
   --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 html {
   scrollbar-color: var(--line-strong) transparent;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
+  min-height: 100dvh;
   background-color: var(--base);
-  background-image:
-    radial-gradient(1100px 560px at 50% -10%, rgba(229, 168, 61, 0.055), transparent 62%),
-    radial-gradient(900px 500px at 110% 100%, rgba(143, 199, 155, 0.04), transparent 55%);
-  background-repeat: no-repeat;
+  background-image: linear-gradient(
+      to bottom,
+      var(--base) 0,
+      var(--base) 10px,
+      transparent 10px
+    ),
+    radial-gradient(900px 480px at 12% -8%, rgba(138, 90, 0, 0.07), transparent 58%),
+    radial-gradient(820px 520px at 96% 100%, rgba(35, 116, 63, 0.05), transparent 55%);
+  background-size: 100% 10px, auto, auto;
   color: var(--ink);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
@@ -56,6 +90,7 @@ body {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+  border-radius: 2px;
 }
 
 @keyframes pulse-dot {

@@ -1,391 +1,318 @@
-"use client";
+import Link from "next/link";
 
-import { useEffect, useMemo, useState } from "react";
-import { UploadSimple } from "@phosphor-icons/react";
-import { analyzeFitness, checkHealth, type FitnessResult } from "../lib/api";
-import MatchMap from "../components/MatchMap";
+/* A small product-specific SVG: two mini panes joined by a real match line. */
+function MatchVisual() {
+  return (
+    <svg
+      viewBox="0 0 520 360"
+      className="h-auto w-full"
+      role="img"
+      aria-label="A job-description requirement connected to a matching resume term"
+    >
+      <defs>
+        <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffffff" />
+          <stop offset="1" stopColor="#faf8f2" />
+        </linearGradient>
+      </defs>
 
-const STEPS = [
+      {/* JD pane */}
+      <rect x="8" y="20" width="214" height="320" rx="10" fill="url(#paper)" stroke="#e4e0d4" />
+      <text x="24" y="46" fontSize="10" letterSpacing="1.6" fill="#6f6a5b" fontFamily="ui-monospace,monospace">
+        JOB DESCRIPTION
+      </text>
+      <rect x="24" y="66" width="120" height="7" rx="3.5" fill="#e4e0d4" />
+      <rect x="24" y="82" width="88" height="7" rx="3.5" fill="#e4e0d4" />
+      <text x="24" y="120" fontSize="10" letterSpacing="1.4" fill="#6f6a5b" fontFamily="ui-monospace,monospace">
+        REQUIRED
+      </text>
+      <rect x="24" y="138" width="150" height="22" rx="5" fill="rgba(138,90,0,0.10)" />
+      <text x="32" y="153" fontSize="10" fill="#8a5a00" fontFamily="ui-monospace,monospace">
+        distributed systems
+      </text>
+      <rect x="24" y="170" width="140" height="22" rx="5" fill="rgba(138,90,0,0.10)" />
+      <text x="32" y="185" fontSize="10" fill="#8a5a00" fontFamily="ui-monospace,monospace">
+        PostgreSQL
+      </text>
+      <rect x="24" y="202" width="150" height="22" rx="5" fill="rgba(35,116,63,0.12)" />
+      <text x="32" y="217" fontSize="10" fill="#23743f" fontFamily="ui-monospace,monospace">
+        Rest APIs
+      </text>
+
+      {/* Resume pane */}
+      <rect x="298" y="20" width="214" height="320" rx="10" fill="url(#paper)" stroke="#e4e0d4" />
+      <text x="314" y="46" fontSize="10" letterSpacing="1.6" fill="#6f6a5b" fontFamily="ui-monospace,monospace">
+        RESUME
+      </text>
+      <rect x="314" y="140" width="150" height="22" rx="5" fill="rgba(35,116,63,0.12)" />
+      <text x="322" y="155" fontSize="10" fill="#2e7d4f" fontFamily="ui-monospace,monospace">
+        distributed + systems
+      </text>
+      <rect x="314" y="172" width="140" height="22" rx="5" fill="rgba(138,90,0,0.10)" />
+      <text x="322" y="187" fontSize="10" fill="#8a5a00" fontFamily="ui-monospace,monospace">
+        PostgreSQL
+      </text>
+      <rect x="314" y="204" width="150" height="22" rx="5" fill="rgba(35,116,63,0.12)" />
+      <text x="322" y="219" fontSize="10" fill="#2e7d4f" fontFamily="ui-monospace,monospace">
+        RESTful APIs
+      </text>
+
+      {/* Match lines */}
+      <g fill="none" strokeLinecap="round">
+        <path d="M 174 149 C 240 149, 272 151, 314 151" stroke="#8a5a00" strokeWidth="2" opacity="0.85" />
+        <path d="M 174 181 C 240 181, 272 183, 314 183" stroke="#8a5a00" strokeWidth="2" opacity="0.85" />
+        <path d="M 174 213 C 240 213, 272 215, 314 215" stroke="#2e7d4f" strokeWidth="2" opacity="0.85" />
+      </g>
+      <circle cx="314" cy="151" r="3.5" fill="#8a5a00" />
+      <circle cx="314" cy="183" r="3.5" fill="#8a5a00" />
+      <circle cx="314" cy="215" r="3.5" fill="#2e7d4f" />
+    </svg>
+  );
+}
+
+const PIPELINE = [
   {
     n: "01",
-    title: "Parse",
-    body: "Regex rules pull out emails, phones, dates, degrees and section headings. A curated skill ontology tags every language, framework and tool with exact character offsets.",
+    name: "Parse",
+    mono: "regex + curated ontology",
+    body: "Email, phone, dates, degrees and headings are extracted by deterministic rules. Every skill is tagged with exact character offsets.",
   },
   {
     n: "02",
-    title: "Extract",
-    body: "With a DeepSeek key set, soft skills, degrees, years and generic abilities are pulled from the JD. Without a key, the system runs on the ontology alone.",
+    name: "Extract",
+    mono: "optional DeepSeek · never a decider",
+    body: "With a key set, soft skills, degrees, years and generic abilities are lifted out of the JD. Without one, it runs on the ontology alone.",
   },
   {
     n: "03",
-    title: "Match",
-    body: "Every requirement is checked against the resume with exact rules and drawn as an SVG line between the two panes. Same input, same score, every time.",
+    name: "Match",
+    mono: "exact · contextual · family",
+    body: "Each requirement is resolved with a fixed rule — no near-match tier — and drawn as a line between the panes. Same input, same score.",
   },
 ];
 
-function DimensionRow({
-  score,
-  label,
-  detail,
-}: {
-  score: number;
-  label: string;
-  detail: string;
-}) {
-  const pct = Math.max(0, Math.min(100, score));
+const GUARANTEES = [
+  {
+    k: "Deterministic",
+    v: "The score is a fixed rule over confirmed matches. The LLM only *suggests* whether a requirement is met (with a quoted resume span); you confirm it, so the exact same inputs and answers always give the same grade.",
+  },
+  {
+    k: "Explainable",
+    v: "Every point traces to a concrete rule or a quoted piece of resume evidence, and every connecting line is a real matched requirement with a quality label.",
+  },
+  {
+    k: "Bias-aware by design",
+    v: "Lexical matching is word-boundary and rule-based. Semantic inference is a single, quoted, human-readable suggestion — never a hidden similarity model.",
+  },
+];
+
+export default function Landing() {
   return (
-    <div className="flex items-center gap-5 py-3">
-      <div className="min-w-0 flex-1">
-        <span className="text-sm font-medium text-ink">{label}</span>
-        {detail ? (
-          <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-faint">{detail}</p>
-        ) : null}
-      </div>
-      <div className="w-32 shrink-0">
-        <div className="h-1 overflow-hidden rounded-full bg-inset">
-          <div
-            className="h-full rounded-full bg-accent transition-[width] duration-500"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-        <div className="mt-1 text-right font-mono text-sm tabular-nums text-ink">
-          {score.toFixed(0)}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, value }: { label: string; value: string | string[] | null | undefined }) {
-  if (!value || (Array.isArray(value) && value.length === 0)) return null;
-  return (
-    <div>
-      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-faint">{label}</p>
-      <p className="mt-0.5 break-all text-sm text-muted">
-        {Array.isArray(value) ? value.join(" · ") : value}
-      </p>
-    </div>
-  );
-}
-
-function Chip({ tone = "neutral", children }: { tone?: "neutral" | "ok" | "warn"; children: React.ReactNode }) {
-  const cls =
-    tone === "ok"
-      ? "bg-ok/10 text-ok"
-      : tone === "warn"
-        ? "bg-warn/10 text-warn"
-        : "border border-line bg-inset text-muted";
-  return (
-    <span className={`rounded-sm px-2 py-1 font-mono text-[11px] ${cls}`}>{children}</span>
-  );
-}
-
-export default function Home() {
-  const [file, setFile] = useState<File | null>(null);
-  const [resumeText, setResumeText] = useState("");
-  const [jobDescription, setJobDescription] = useState("");
-  const [result, setResult] = useState<FitnessResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [apiOk, setApiOk] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    checkHealth()
-      .then(() => setApiOk(true))
-      .catch(() => setApiOk(false));
-  }, []);
-
-  const canAnalyze = useMemo(() => {
-    const hasResume = Boolean(file) || resumeText.trim().length > 20;
-    return hasResume && jobDescription.trim().length > 20 && !loading;
-  }, [file, resumeText, jobDescription, loading]);
-
-  async function onAnalyze() {
-    setError(null);
-    setLoading(true);
-    try {
-      const data = await analyzeFitness({
-        jobDescription,
-        file,
-        resumeText: file ? undefined : resumeText,
-      });
-      setResult(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Analyze failed");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const present = result?.required_terms.filter((t) => t.matched) ?? [];
-  const missing = result?.required_terms.filter((t) => !t.matched) ?? [];
-
-  return (
-    <div className="flex min-h-dvh flex-col bg-base text-ink">
-      <header className="sticky top-0 z-20 border-b border-line bg-base/90 backdrop-blur-sm">
-        <div className="mx-auto flex h-14 w-full max-w-[1100px] items-center justify-between px-5">
+    <div className="min-h-dvh bg-base text-ink">
+      <header className="sticky top-0 z-20 border-b border-line bg-base/85 backdrop-blur-sm">
+        <div className="mx-auto flex h-14 w-full max-w-[1120px] items-center justify-between px-5">
           <div className="flex items-center gap-2.5">
             <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
-            <span className="font-mono text-sm font-semibold tracking-[0.22em] text-ink">
-              FAIRHIRE
-            </span>
+            <span className="font-mono text-sm font-semibold tracking-[0.22em] text-ink">FAIRHIRE</span>
           </div>
-          <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
-            <span
-              className={`h-2 w-2 rounded-full ${
-                apiOk ? "bg-ok" : apiOk === false ? "bg-warn" : "bg-faint pulse-dot"
-              }`}
-              aria-hidden
-            />
-            <span>
-              api ·{" "}
-              {apiOk === null ? (
-                "checking"
-              ) : apiOk ? (
-                <span className="text-ok">online</span>
-              ) : (
-                <span className="text-warn">offline</span>
-              )}
-            </span>
-          </div>
+          <nav className="flex items-center gap-6 font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
+            <a href="#how" className="hidden transition hover:text-ink sm:block">
+              How it works
+            </a>
+            <Link
+              href="/app"
+              className="rounded-md bg-accent px-3.5 py-1.5 text-accent-ink transition hover:brightness-110"
+            >
+              Open app
+            </Link>
+          </nav>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[1100px] flex-1 px-5 pb-16">
-        <section className="grid gap-5 pt-8 sm:gap-6 lg:grid-cols-2 lg:pt-12">
-          <div className="flex flex-col overflow-hidden rounded-md border border-line bg-panel">
-            <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5">
-              <h2 className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-ink">
-                Job description
-              </h2>
-              <span className="font-mono text-[11px] tabular-nums text-faint">
-                {jobDescription.length} chars
-              </span>
-            </div>
-            <textarea
-              value={jobDescription}
-              onChange={(e) => setJobDescription(e.target.value)}
-              placeholder="Paste the full JD here…"
-              rows={18}
-              className="w-full flex-1 resize-y bg-transparent px-4 py-3 text-sm leading-relaxed text-ink outline-none placeholder:text-faint"
-            />
-          </div>
-
-          <div className="flex flex-col overflow-hidden rounded-md border border-line bg-panel">
-            <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5">
-              <h2 className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-ink">
-                Resume
-              </h2>
-              <span className="font-mono text-[11px] tabular-nums text-faint">
-                {resumeText.length} chars
-              </span>
-            </div>
-
-            <div className="px-4 pt-4">
-              <label className="group flex cursor-pointer items-center gap-3 rounded-md border border-dashed border-line-strong bg-inset px-3 py-2.5 transition-colors hover:border-accent">
-                <UploadSimple className="h-4 w-4 shrink-0 text-accent" weight="duotone" />
-                <span className="truncate font-mono text-xs text-muted group-hover:text-ink">
-                  {file ? file.name : "Upload .pdf · .txt · .md"}
-                </span>
-                <input
-                  type="file"
-                  accept=".pdf,.txt,.md,application/pdf,text/plain"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  className="sr-only"
-                />
-              </label>
-            </div>
-
-            <textarea
-              value={resumeText}
-              onChange={(e) => setResumeText(e.target.value)}
-              placeholder="Or paste resume text here…"
-              rows={12}
-              className="mt-3 w-full flex-1 resize-y bg-transparent px-4 py-1 text-sm leading-relaxed text-ink outline-none placeholder:text-faint"
-            />
-
-            <div className="border-t border-line p-4">
-              <button
-                type="button"
-                disabled={!canAnalyze}
-                onClick={onAnalyze}
-                className="flex w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.18em] text-accent-ink transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-35"
+      {/* Hero */}
+      <section className="border-b border-line">
+        <div className="mx-auto grid w-full max-w-[1120px] gap-10 px-5 pb-16 pt-16 sm:pt-20 lg:grid-cols-2 lg:items-center lg:gap-14">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-accent">
+              Deterministic resume ↔ job-description matching
+            </p>
+            <h1 className="mt-4 text-4xl font-semibold leading-[1.05] tracking-tight text-ink sm:text-5xl lg:text-6xl">
+              Know exactly why a
+              <br className="hidden sm:block" /> resume fits.
+            </h1>
+            <p className="mt-5 max-w-[52ch] text-lg leading-relaxed text-muted">
+              Paste a job description and a resume. FairHire extracts the real requirements and
+              matches them with fixed rules — drawing a line for every term that truly matches, in
+              a score you can trace back to a rule.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Link
+                href="/app"
+                className="rounded-md bg-accent px-6 py-3 font-mono text-xs font-semibold uppercase tracking-[0.16em] text-accent-ink transition hover:brightness-110 active:scale-[0.99]"
               >
-                {loading ? (
-                  <>
-                    <span className="h-1.5 w-1.5 rounded-full bg-accent-ink pulse-dot" aria-hidden />
-                    Scoring…
-                  </>
-                ) : (
-                  "Score match"
-                )}
-              </button>
-              {!canAnalyze && !loading && !error ? (
-                <p className="mt-3 text-center font-mono text-[11px] text-faint">
-                  needs 20+ chars of JD and resume
-                </p>
-              ) : null}
-              {error ? (
-                <p className="mt-3 rounded-md border border-warn/30 bg-warn/10 px-3 py-2 font-mono text-xs text-warn">
-                  {error}
-                </p>
-              ) : null}
+                Score a match
+              </Link>
+              <a
+                href="#how"
+                className="rounded-md border border-line bg-panel px-6 py-3 font-mono text-xs font-semibold uppercase tracking-[0.16em] text-ink transition hover:border-line-strong"
+              >
+                How it works
+              </a>
+            </div>
+            <dl className="mt-10 grid max-w-md grid-cols-3 gap-6 border-t border-line pt-6">
+              <div>
+                <dt className="font-mono text-2xl font-medium tabular-nums text-ink">0</dt>
+                <dd className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-faint">
+                  LLMs in the verdict
+                </dd>
+              </div>
+              <div>
+                <dt className="font-mono text-2xl font-medium tabular-nums text-ink">100%</dt>
+                <dd className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-faint">
+                  repeatable
+                </dd>
+              </div>
+              <div>
+                <dt className="font-mono text-2xl font-medium tabular-nums text-ink">3</dt>
+                <dd className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-faint">
+                  match tiers
+                </dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="relative">
+            <div
+              className="pointer-events-none absolute -inset-6 -z-10 rounded-3xl"
+              style={{
+                backgroundImage:
+                  "repeating-linear-gradient(90deg, transparent 0 39px, rgba(138,90,0,0.06) 39px 40px)",
+              }}
+              aria-hidden
+            />
+            <div className="rounded-xl border border-line bg-panel p-5 shadow-[0_30px_60px_-30px_rgba(27,26,22,0.25)]">
+              <MatchVisual />
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {result ? (
-          <section className="fade-up mt-8 space-y-5">
-            <div className="grid overflow-hidden rounded-md border border-line bg-panel md:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
-              <div className="flex flex-col justify-center border-b border-line px-6 py-6 md:border-b-0 md:border-r md:px-8 md:py-8">
-                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-faint">
-                  Overall score
-                </p>
-                <p className="mt-3 font-mono text-6xl font-medium tabular-nums leading-none tracking-tight text-ink md:text-7xl">
-                  {result.overall_score.toFixed(1)}
-                </p>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  {result.job_title ? (
-                    <Chip>role · {result.job_title}</Chip>
-                  ) : null}
-                  <Chip>extraction · {result.extraction_mode}</Chip>
-                  <Chip tone="ok">
-                    {present.length}/{result.required_terms.length} required present
-                  </Chip>
-                  <Chip tone="warn">{missing.length} missing</Chip>
-                </div>
-              </div>
+      {/* How it works */}
+      <section id="how" className="scroll-mt-20 border-b border-line">
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-20">
+          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-accent">The pipeline</p>
+          <h2 className="mt-3 max-w-[26ch] text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+            Three deterministic stages. No black box.
+          </h2>
 
-              <div className="px-6 py-6 md:px-8 md:py-8">
-                <div className="divide-y divide-line">
-                  {result.dimensions.map((d) => (
-                    <DimensionRow
-                      key={d.key}
-                      score={d.score}
-                      label={d.label}
-                      detail={d.detail}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-5 lg:grid-cols-2">
-              <div className="overflow-hidden rounded-md border border-line bg-panel">
-                <div className="border-b border-line px-4 py-2.5">
-                  <h3 className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-ink">
-                    Blockers
-                  </h3>
-                </div>
-                {result.blockers.length === 0 ? (
-                  <p className="px-4 py-5 font-mono text-xs text-muted">No blockers detected.</p>
-                ) : (
-                  <ul className="divide-y divide-line">
-                    {result.blockers.map((b) => (
-                      <li key={b.code + b.message} className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-warn">
-                            {b.severity}
-                          </span>
-                          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
-                            {b.code}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-sm font-medium text-ink">{b.message}</p>
-                        <p className="mt-0.5 text-[13px] leading-relaxed text-muted">
-                          {b.suggestion}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              <div className="overflow-hidden rounded-md border border-line bg-panel">
-                <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5">
-                  <h3 className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-ink">
-                    Required skills
-                  </h3>
-                  <span className="font-mono text-[11px] tabular-nums text-faint">
-                    {present.length}/{result.required_terms.length} present
+          <div className="mt-12 grid gap-px overflow-hidden rounded-xl border border-line bg-line lg:grid-cols-3">
+            {PIPELINE.map((p) => (
+              <div key={p.n} className="flex flex-col bg-panel p-7">
+                <div className="flex items-baseline justify-between">
+                  <span className="font-mono text-xs text-faint">{p.n}</span>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+                    {p.mono}
                   </span>
                 </div>
-                <ul className="divide-y divide-line">
-                  {result.required_terms.slice(0, 18).map((t) => (
-                    <li key={t.term} className="flex items-center justify-between gap-3 px-4 py-2">
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className="rounded-sm bg-inset px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">
-                          {t.kind}
-                        </span>
-                        <span className="truncate text-sm text-ink">{t.term}</span>
-                      </span>
-                      <span
-                        className={
-                          t.matched
-                            ? "shrink-0 font-mono text-[11px] tabular-nums text-ok"
-                            : "shrink-0 font-mono text-[11px] tabular-nums text-warn"
-                        }
-                      >
-                        {t.matched ? `matched${t.quality ? ` · ${t.quality}` : ""}` : "missing"}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <h3 className="mt-4 text-xl font-semibold text-ink">{p.name}</h3>
+                <p className="mt-2 max-w-[38ch] text-sm leading-relaxed text-muted">{p.body}</p>
               </div>
-            </div>
+            ))}
+          </div>
 
-            <div className="overflow-hidden rounded-md border border-line bg-panel">
-              <div className="border-b border-line px-4 py-2.5">
-                <h3 className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-ink">
-                  Extracted fields
-                </h3>
-              </div>
-              <div className="grid grid-cols-1 gap-x-8 gap-y-4 px-5 py-4 sm:grid-cols-2 lg:grid-cols-4">
-                <Field label="Email" value={result.resume_features?.email} />
-                <Field label="Phone" value={result.resume_features?.phone} />
-                <Field label="Location" value={result.resume_features?.location} />
-                <Field label="LinkedIn" value={result.resume_features?.linkedin} />
-                <Field label="GitHub" value={result.resume_features?.github} />
-                <Field label="Degrees" value={result.resume_features?.degrees} />
-                <Field label="Role titles" value={result.resume_titles} />
-              </div>
-            </div>
-
-            <div className="overflow-hidden rounded-md border border-line bg-panel">
-              <MatchMap result={result} />
-            </div>
-
-            <p className="font-mono text-[11px] leading-relaxed text-faint">
-              {result.disclaimer}
+          <div className="mt-6 rounded-xl border border-line bg-panel-2 p-6 sm:p-8">
+            <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-faint">
+              A match must be real
             </p>
-          </section>
-        ) : null}
-
-        <section className="mt-8 grid gap-px overflow-hidden rounded-md border border-line bg-line sm:grid-cols-3">
-          {STEPS.map((s) => (
-            <div key={s.n} className="bg-base p-5">
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-accent">
-                {s.n}
-              </p>
-              <h3 className="mt-2 text-sm font-semibold text-ink">{s.title}</h3>
-              <p className="mt-1.5 text-[13px] leading-relaxed text-muted">{s.body}</p>
+            <div className="mt-4 grid gap-6 md:grid-cols-3">
+              {GUARANTEES.map((g) => (
+                <div key={g.k}>
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
+                    <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
+                    {g.k}
+                  </h3>
+                  <p className="mt-1.5 text-[13px] leading-relaxed text-muted">{g.v}</p>
+                </div>
+              ))}
             </div>
-          ))}
-        </section>
+          </div>
+        </div>
+      </section>
 
-        <section className="mt-5 rounded-md border border-line bg-panel px-5 py-4 sm:mt-6">
-          <p className="max-w-[70ch] text-sm leading-relaxed text-muted">
-            Matches are computed with fixed rules, so the same resume and JD always produce the
-            same score and the same links. With a DeepSeek key set, extraction is added for soft
-            skills, degrees, and years — it still never decides whether a match exists.
+      {/* Determinism showcase */}
+      <section className="border-b border-line">
+        <div className="mx-auto grid w-full max-w-[1120px] gap-10 px-5 py-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] lg:items-center">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-accent">
+              Rule-first scoring
+            </p>
+            <h2 className="mt-3 max-w-[24ch] text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+              A scorecard you can interrogate.
+            </h2>
+            <ul className="mt-6 space-y-3">
+              {[
+                "Required-vs-nice-to-have split from where a term sits in the JD",
+                "Exact family relations (SQL → PostgreSQL) — never fuzzy similarity",
+                "Lexical tiers first; the LLM only infers the leftovers, quoting its evidence",
+                "Blockers that tell you what to add, not just a number",
+              ].map((li) => (
+                <li key={li} className="flex gap-3 text-[15px] leading-relaxed text-muted">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-ok" aria-hidden />
+                  {li}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="rounded-xl border border-line bg-panel p-5 font-mono text-[12px] leading-relaxed">
+            <div className="flex items-center gap-2 border-b border-line pb-3">
+              <span className="h-2 w-2 rounded-full bg-warn/70" aria-hidden />
+              <span className="h-2 w-2 rounded-full bg-accent/70" aria-hidden />
+              <span className="h-2 w-2 rounded-full bg-ok/70" aria-hidden />
+              <span className="ml-2 text-[10px] uppercase tracking-[0.16em] text-faint">
+                rule · example
+              </span>
+            </div>
+            <p className="pt-4 text-muted">$ JD requires “SQL”</p>
+            <p className="text-ink">→ resume has PostgreSQL</p>
+            <p className="text-ok">✓ family: SQL ⊃ PostgreSQL</p>
+            <p className="pt-3 text-muted">$ JD requires “JavaScript”</p>
+            <p className="text-ink">→ resume shows TypeScript</p>
+            <p className="text-ok">✓ llm: “TypeScript is a superset of JavaScript”</p>
+            <p className="pt-3 text-muted">
+              lexical relations are deterministic rules; only what they can’t resolve
+              falls through to a quoted, human-readable LLM judgement — never a hidden score.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="mx-auto w-full max-w-[1120px] px-5 py-20">
+        <div className="rounded-2xl border border-line bg-panel px-6 py-12 text-center sm:px-12">
+          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-accent">
+            Ready to read a resume
           </p>
-        </section>
-      </main>
+          <h2 className="mx-auto mt-3 max-w-[22ch] text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+            Deterministic, explainable, reproducible.
+          </h2>
+          <p className="mx-auto mt-4 max-w-[52ch] text-[15px] leading-relaxed text-muted">
+            Drop in a JD and a candidate and get an instant score with the lines drawn — same
+            answer every time.
+          </p>
+          <Link
+            href="/app"
+            className="mt-8 inline-block rounded-md bg-accent px-8 py-3.5 font-mono text-xs font-semibold uppercase tracking-[0.16em] text-accent-ink transition hover:brightness-110 active:scale-[0.99]"
+          >
+            Go to app
+          </Link>
+        </div>
+      </section>
 
       <footer className="border-t border-line">
-        <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-2 px-5 py-6 font-mono text-[11px] tracking-[0.04em] text-faint sm:flex-row sm:items-center sm:justify-between">
-          <span>FairHire · deterministic resume ↔ job-description matching</span>
-          <span>regex + skill ontology · optional DeepSeek extraction</span>
+        <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-2 px-5 py-6 font-mono text-[11px] tracking-[0.04em] text-faint sm:flex-row sm:items-center sm:justify-between">
+          <span>© {new Date().getFullYear()} FairHire. All rights reserved.</span>
+          <span>Deterministic resume ↔ job-description matching</span>
         </div>
       </footer>
     </div>

@@ -1,10 +1,15 @@
-"""Hybrid matching: LLM-extracted requirements -> deterministic match.
+"""Hybrid matching: LLM-extracted requirements -> deterministic matches.
 
 The DeepSeek layer produces structured requirements (skill / degree / years /
-soft / ability) plus resume evidence. This module converts each requirement
-into a *deterministic* decision using the same primitives as the pure
-deterministic path (ontology tiers, token containment, regex). The LLM only
-decides *what* to look for; it never decides *whether* it matches.
+soft / ability) plus resume evidence, and *also* judges requirements that the
+lexical tiers cannot resolve (supersets, synonyms, novel skills — e.g. a resume
+with "TypeScript" satisfies a "JavaScript" requirement). This module turns each
+requirement into a match with an anchored resume span.
+
+Determinism is preserved where it matters: scoring (see score.py) is a fixed
+rule over the resulting matched/missing sets. The LLM may only UPGRADE a missing
+requirement to matched (with evidence); it never downgrades a lexical match and
+never produces a score.
 """
 
 from __future__ import annotations
@@ -13,17 +18,17 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from fairhire.fitness.llm_extract import Requirement, ResumeEvidence
+from fairhire.fitness import llm_extract as _llm
+from fairhire.fitness.llm_extract import Requirement, ResumeEvidence, SemanticJudgment
 from fairhire.fitness.matcher import (
     EXACT_SCORE,
     CONTAINS_SCORE,
     FAMILY_SCORE,
-    FUZZY_SCORE,
+    INFERRED_SCORE,
     Link,
     _best_resume_occurrence,
     _contains_match,
     _family_match,
-    _fuzzy_match,
     _sentence_text,
     _token_spans,
 )
@@ -56,6 +61,8 @@ class RequirementMatchRow:
     quality: str | None = None
     score: float = 0.0
     resume_term: str | None = None
+    suggested: bool | None = None
+    hint: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -66,6 +73,26 @@ class RequirementMatchRow:
             "quality": self.quality,
             "score": round(self.score, 2) if self.matched else None,
             "resume_term": self.resume_term,
+            "suggested": self.suggested,
+            "hint": self.hint,
+        }
+
+
+@dataclass
+class ConfirmItem:
+    term: str
+    kind: str
+    required: bool
+    suggested: bool | None
+    hint: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "term": self.term,
+            "kind": self.kind,
+            "required": self.required,
+            "suggested": self.suggested,
+            "hint": self.hint,
         }
 
 
@@ -73,6 +100,7 @@ class RequirementMatchRow:
 class HybridResult:
     links: list[Link] = field(default_factory=list)
     rows: list[RequirementMatchRow] = field(default_factory=list)
+    confirm_items: list[ConfirmItem] = field(default_factory=list)
     matched_required: list[str] = field(default_factory=list)
     missing_required: list[str] = field(default_factory=list)
     missing_optional: list[str] = field(default_factory=list)
@@ -164,17 +192,6 @@ _DEGREE_TOPIC_STOP = {
     "of", "for", "with", "the", "equivalent", "other", "plus", "certification",
 }
 
-# Generic tokens that should never confirm an evidence overlap by themselves.
-# Note: "development" (noun) is weak, but "develop"/"developed" (verb) is a
-# strong signal for generic "ability" requirements.
-_WEAK_EVIDENCE_TOKENS = {
-    "development", "software", "project", "projects", "system", "systems",
-    "application", "applications", "app", "apps", "data", "user", "users",
-    "team", "teams", "support", "design", "designing", "build", "built",
-    "using", "used", "work", "working", "new", "internal", "improve",
-    "strong", "skills", "skill", "while", "also", "etc", "well", "however",
-}
-
 
 def _years_from_text(text: str) -> float | None:
     m = re.search(r"(\d{1,2})\s*\+?\s*(?:years?|yrs)\b", text, re.I)
@@ -225,10 +242,6 @@ def _match_skill(
         if family is not None:
             var, si, ss, se, mt = family
             return _make_link(req, jd, resume, "family", FAMILY_SCORE, mt, si, ss, se), canonical
-        fuzzy = _fuzzy_match(resume, canonical)
-        if fuzzy is not None:
-            var, si, ss, se, mt = fuzzy
-            return _make_link(req, jd, resume, "fuzzy", FUZZY_SCORE, mt, si, ss, se), canonical
 
     # 2. Token containment of the full requirement phrase in one resume sentence.
     contains = _contains_match(resume, req.text)
@@ -288,24 +301,18 @@ def _match_years(
     return _make_link(req, jd, resume, "exact", EXACT_SCORE, f"{total:.0f} years", sent_idx, ss, se)
 
 
-def _stem(tok: str) -> str:
-    if len(tok) <= 5:
-        return tok
-    for suffix in ("ing", "ed", "es", "s"):
-        if tok.endswith(suffix) and len(tok) > len(suffix) + 2:
-            return tok[: -len(suffix)]
-    return tok
-
-
-def _stemmed(tokens: list[str]) -> set[str]:
-    return {_stem(t) for t in tokens}
-
-
 def _match_soft_or_ability(
     req: Requirement, jd: ParsedDoc, resume: ParsedDoc, evidence: ResumeEvidence | None
 ) -> Link | None:
+    """Match a soft/ability requirement only on strong, curated evidence.
+
+    We deliberately avoid loose token/stem overlap (which produced misleading
+    "word match" links like a mentorship requirement hitting "Full Stack
+    Software Engineer"). A soft or ability requirement is only auto-confirmed
+    when a curated trigger's evidence pattern appears in the resume. Anything
+    else is left unresolved and surfaced to the user as a question.
+    """
     req_sig = set(_sig_tokens(req.text))
-    # a) Curated trigger -> evidence pattern found anywhere in the resume.
     for triggers, pattern in _SOFT_TRIGGERS:
         if not (triggers & req_sig):
             continue
@@ -315,38 +322,6 @@ def _match_soft_or_ability(
                 ss, se = s.start + m.start(), s.start + m.end()
                 return _make_link(req, jd, resume, "contextual", CONTAINS_SCORE,
                                   m.group(0), s.index, ss, se)
-    # b) Significant tokens of the requirement appear in one resume sentence.
-    contains = _contains_match(resume, req.text)
-    if contains is not None:
-        snippet, si, ss, se, var = contains
-        return _make_link(req, jd, resume, "contextual", CONTAINS_SCORE, var, si, ss, se)
-    # c) Stemmed token overlap against the resume's own sentences.
-    #    Generic "ability" requirements confirm on one strong verb (e.g.
-    #    "develop" ~ "developed"); soft skills need multiple meaningful tokens.
-    min_shared = 1 if req.kind == "ability" else 2
-    req_stem = _stemmed(_sig_tokens(req.text))
-    for s in resume.sentences:
-        sent_stem = _stemmed([w for w, _, _ in _token_spans(s.text.lower())])
-        shared = (req_stem & sent_stem) - _WEAK_EVIDENCE_TOKENS
-        if len(shared) < min_shared:
-            continue
-        tok = sorted(shared)[0]
-        ss, se = _anchor_resume_sentence(resume, s.index, tok)
-        return _make_link(req, jd, resume, "contextual", CONTAINS_SCORE, tok, s.index, ss, se)
-    # d) Token overlap with LLM resume evidence (soft skills / strengths) as
-    #    a final fallback when the resume text itself is too sparse.
-    if evidence:
-        for item in [*evidence.soft_skills, *evidence.strengths]:
-            item_sig = _stemmed(_sig_tokens(item))
-            shared = (req_stem & item_sig) - _WEAK_EVIDENCE_TOKENS
-            if len(shared) < min_shared:
-                continue
-            tok = sorted(shared)[0]
-            sent_idx = _resume_sentence_with(resume, tok)
-            if sent_idx < 0:
-                sent_idx = 0
-            ss, se = _anchor_resume_sentence(resume, sent_idx, tok)
-            return _make_link(req, jd, resume, "contextual", CONTAINS_SCORE, item, sent_idx, ss, se)
     return None
 
 
@@ -381,11 +356,46 @@ def _make_link(
     )
 
 
+def _anchor_evidence(
+    resume: ParsedDoc, evidence: str
+) -> tuple[int, int, int] | None:
+    """Locate a quoted `evidence` substring in the resume.
+
+    Returns (sentence_index, start, end) anchored to a real span, or None if the
+    quote cannot be found (we never fabricate a link for unverifiable evidence).
+    """
+    evidence = re.sub(r"\s+", " ", (evidence or "")).strip()
+    if len(evidence) < 2:
+        return None
+    idx = resume.text.lower().find(evidence.lower())
+    if idx < 0:
+        # Tolerate whitespace differences: match sentence-by-sentence.
+        flat = re.sub(r"\s+", " ", evidence.lower())
+        for s in resume.sentences:
+            if not s.text:
+                continue
+            if flat in re.sub(r"\s+", " ", s.text.lower()):
+                return s.index, s.start, min(s.start + 1, s.end)
+        return None
+    sent = _sentence_for(resume.sentences, idx)
+    if sent < 0:
+        return None
+    s = resume.sentences[sent]
+    start = max(s.start, idx)
+    end = min(s.end, idx + len(evidence))
+    if end <= start:
+        start = s.start
+        end = min(s.start + 1, s.end)
+    return sent, start, end
+
+
 def match_requirements(
     requirements: list[Requirement],
     jd: ParsedDoc,
     resume: ParsedDoc,
     resume_evidence: ResumeEvidence | None,
+    config: Any | None = None,
+    confirmations: dict[str, bool] | None = None,
     max_requirements: int = 24,
 ) -> HybridResult:
     result = HybridResult()
@@ -412,21 +422,101 @@ def match_requirements(
             required=req.required,
         )
         if link is not None:
-            row.matched = True
-            row.quality = link.quality
-            row.score = link.score
-            row.resume_term = link.resume_term
-            result.links.append(link)
-            if req.required:
-                result.matched_required.append(req.text)
+            _mark_matched(result, row, link, req)
         else:
             (result.missing_required if req.required else result.missing_optional).append(req.text)
         result.rows.append(row)
 
+    if config is not None:
+        llm_enabled = bool(getattr(config, "llm_extraction_enabled", False))
+    else:
+        llm_enabled = False
+    unresolved = [row for row in result.rows if not row.matched]
+    if unresolved:
+        confirmations = confirmations or {}
+
+        # LLM suggestion + hint for every unresolved requirement. The LLM only
+        # *advises* (does it look satisfied, and from which resume quote) — it
+        # never decides the score. The user's explicit answer (confirmations)
+        # is what flips a requirement, keeping the score deterministic.
+        if llm_enabled:
+            judged: list[SemanticJudgment] = _llm.judge_requirements(
+                [r.term for r in unresolved], resume.text, config
+            )
+            by_req = {j.requirement.strip().lower(): j for j in judged}
+        else:
+            by_req = {}
+        for row in unresolved:
+            j = by_req.get(row.term.strip().lower())
+            if j is not None:
+                row.suggested = j.satisfied
+                row.hint = (j.evidence or j.relation or "").strip()[:160]
+            else:
+                row.suggested = None
+
+            answer = confirmations.get(row.term.strip().lower())
+            if answer is True:
+                _upgrade_to_matched(result, row, jd, resume, row.hint)
+            # answer False / not answered -> stays missing (surfaced as a question).
+
+    result.confirm_items = [
+        ConfirmItem(row.term, row.kind, row.required, row.suggested, row.hint)
+        for row in result.rows
+        if not row.matched
+    ]
     result.links.sort(
         key=lambda lnk: (0 if lnk.required else 1, -lnk.score, lnk.canonical.lower())
     )
     return result
+
+
+def _mark_matched(result: HybridResult, row: RequirementMatchRow, link: Link, req: Requirement) -> None:
+    row.matched = True
+    row.quality = link.quality
+    row.score = link.score
+    row.resume_term = link.resume_term
+    result.links.append(link)
+    (result.matched_required if req.required else result.matched_optional).append(req.text)
+
+
+def _upgrade_to_matched(
+    result: HybridResult,
+    row: RequirementMatchRow,
+    jd: ParsedDoc,
+    resume: ParsedDoc,
+    hint: str,
+) -> None:
+    """Fold a user-confirmed requirement into the match set, deterministically.
+
+    The user has confirmed the requirement; we anchor a connecting line to real
+    resume text (the LLM's hint quote when available, else the requirement's own
+    tokens). This is the only path that turns an uncertain requirement into a
+    match, and it only runs on explicit user input.
+    """
+    row.matched = True
+    row.quality = "inferred"
+    row.score = INFERRED_SCORE
+
+    linked = False
+    if hint:
+        anchored = _anchor_evidence(resume, hint)
+        if anchored is not None:
+            sent_idx, s_start, s_end = anchored
+            req = Requirement(row.term, row.kind, row.required)
+            link = _make_link(req, jd, resume, "inferred", INFERRED_SCORE,
+                              hint[:80], sent_idx, s_start, s_end)
+            result.links.append(link)
+            row.resume_term = hint[:80]
+            linked = True
+    if not linked:
+        # No verifiable quote — still count it (the user said so) but don't draw
+        # a misleading connecting line.
+        row.resume_term = row.term
+
+    (result.matched_required if row.required else result.matched_optional).append(row.term)
+    missing = result.missing_required if row.required else result.missing_optional
+    if row.term in missing:
+        missing.remove(row.term)
 
 
 def rows_to_dicts(rows: list[RequirementMatchRow]) -> list[dict[str, Any]]:

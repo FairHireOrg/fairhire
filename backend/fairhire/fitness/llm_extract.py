@@ -1,12 +1,17 @@
-"""Optional DeepSeek-assisted extraction (hybrid mode).
+"""Optional DeepSeek-assisted extraction + matching (hybrid mode).
 
-The LLM only performs *extraction* of structured requirements from the JD and
-structured evidence from the resume — the fuzzy parts a curated ontology can't
-cover (soft skills, degrees, years of experience, generic abilities). Every
-subsequent match and every score stays deterministic and explainable.
+The LLM does the fuzzy, semantic work a curated ontology can't:
+  * *extraction* — structured requirements from the JD plus evidence (soft
+    skills, degrees, years of experience, generic abilities) from the resume;
+  * *matching* — judging whether the resume genuinely satisfies a requirement the
+    lexical tiers could not resolve (supersets, synonyms, equivalences, novel
+    skills). The judgement is grounded in an exact resume quote.
+
+What the LLM never does is *score*. The grade is a fixed rule over the resulting
+matched/missing sets (see score.py), so candidates are not graded arbitrarily.
 
 When no API key is configured, this module is never used and the system runs
-purely deterministic.
+purely deterministic (lexical matching only).
 """
 
 from __future__ import annotations
@@ -50,6 +55,24 @@ class ResumeEvidence:
             "strengths": self.strengths,
             "total_years": self.total_years,
             "summary": self.summary,
+        }
+
+
+@dataclass
+class SemanticJudgment:
+    """An LLM judgement that a resume *matches* a requirement, with evidence."""
+
+    requirement: str
+    satisfied: bool
+    evidence: str = ""
+    relation: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "requirement": self.requirement,
+            "satisfied": self.satisfied,
+            "evidence": self.evidence,
+            "relation": self.relation,
         }
 
 
@@ -136,6 +159,7 @@ def _chat_json(
     config: Config,
     max_tokens: int = 1500,
     attempts: int = 2,
+    temperature: float = 0.0,
 ) -> dict[str, Any]:
     client = _client(config)
     last_err: Exception | None = None
@@ -152,7 +176,7 @@ def _chat_json(
             resp = client.chat.completions.create(
                 model=config.deepseek_model,
                 messages=messages,
-                temperature=0.1 if attempt == 0 else 0.0,
+                temperature=temperature,
                 max_tokens=max_tokens,
             )
             content = resp.choices[0].message.content or ""
@@ -250,3 +274,79 @@ def extract_resume_evidence(resume_text: str, config: Config | None = None) -> R
         total_years=years,
         summary=str(data.get("summary") or "")[:300],
     )
+
+
+# LLM matching judgment. This is the "think outside the box" layer: given a
+# requirement the deterministic matcher could not resolve, the LLM decides
+# whether the resume genuinely satisfies it (supersets, synonyms, equivalences,
+# novel skills). It may only UPGRADE a missing requirement to matched — it never
+# downgrades one the deterministic matcher already found, and it never produces a
+# score. Scoring stays fully rule-based (see score.py).
+SEMANTIC_SYSTEM = """You judge whether a candidate resume satisfies each job requirement.
+
+Think beyond the surface text: infer supersets, synonyms and equivalences the
+resume actually demonstrates. Examples:
+- a resume using TypeScript satisfies a "JavaScript" requirement
+- React Native satisfies "React"; Kotlin/Spring satisfies "Java"
+- Django/Flask/PyTorch satisfies "Python"
+Do NOT invent support: a resume that merely mentions a loosely-related word but
+does not demonstrate the requirement must be judged NOT satisfied.
+
+For every requirement return exactly one object:
+{
+  "requirement": "<the exact requirement text, verbatim>",
+  "satisfied": true|false,
+  "evidence": "<a SHORT exact, contiguous quote from the resume that supports it; \"\" when not satisfied>",
+  "relation": "<a brief reason, e.g. \"TypeScript is a superset of JavaScript\"; \"\" when it is an exact match>"
+}
+
+Rules:
+- The evidence MUST be a verbatim substring of the resume. Never paraphrase, summarise or invent.
+- satisfied=true only when the resume genuinely supports the requirement.
+- Return ONLY JSON: {"judgments":[...]}"""
+
+
+def judge_requirements(
+    requirements: list[str],
+    resume_text: str,
+    config: Config | None = None,
+    max_items: int = 24,
+) -> list[SemanticJudgment]:
+    """Have the LLM judge whether the (unresolved) requirements are satisfied."""
+    config = config or Config()
+    if not config.llm_extraction_enabled or not requirements:
+        return []
+    items = requirements[:max_items]
+    user = (
+        "Resume (verbatim text):\n\n"
+        f"{resume_text[:6000]}\n\n"
+        "Requirement(s) to judge:\n"
+        + "\n".join(f"- {r}" for r in items)
+        + '\n\nReturn JSON: {"judgments":[...]}'
+    )
+    try:
+        data = _chat_json(system=SEMANTIC_SYSTEM, user=user, config=config, max_tokens=2400)
+    except Exception:  # noqa: BLE001
+        return []
+
+    by_req: dict[str, SemanticJudgment] = {}
+    for raw in data.get("judgments") or []:
+        if not isinstance(raw, dict):
+            continue
+        req = str(raw.get("requirement") or "").strip().lower()
+        if not req:
+            continue
+        evidence = str(raw.get("evidence") or "").strip()
+        by_req[req] = SemanticJudgment(
+            requirement=str(raw.get("requirement") or "").strip(),
+            satisfied=bool(raw.get("satisfied")) and len(evidence) >= 2,
+            evidence=evidence,
+            relation=str(raw.get("relation") or "").strip(),
+        )
+
+    out: list[SemanticJudgment] = []
+    for r in items:
+        j = by_req.get(r.strip().lower())
+        if j is not None:
+            out.append(j)
+    return out

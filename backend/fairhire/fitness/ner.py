@@ -129,30 +129,37 @@ def segment_sentences(text: str) -> list[Sentence]:
     """
     sentences: list[Sentence] = []
     cursor = 0
-    for line in text.splitlines():
-        start = text.find(line, cursor)
-        if start < 0:
-            start = cursor
-        cursor = start + len(line) + 1
+    for raw_line in text.splitlines(keepends=True):
+        line = raw_line.rstrip("\r\n")
+        line_start = cursor
+        cursor += len(raw_line)
         stripped = line.strip()
         if not stripped:
             continue
+        leading = len(line) - len(line.lstrip())
+        content_start = line_start + leading
         if _BULLET_LEAD.match(line):
-            sentences.append(Sentence(len(sentences), line.strip(), start, cursor - 1))
+            sentences.append(
+                Sentence(
+                    len(sentences), stripped, content_start, content_start + len(stripped)
+                )
+            )
             continue
         # Split long prose lines on sentence boundaries.
         parts = _SENTENCE_SPLIT.split(line)
-        offset = start
+        search_from = 0
         for part in parts:
             if not part.strip():
                 continue
-            local = line.find(part, offset - start)
+            local = line.find(part, search_from)
             if local < 0:
-                local = offset - start
-            p_start = start + local
-            p_end = p_start + len(part)
-            sentences.append(Sentence(len(sentences), part.strip(), p_start, p_end))
-            offset = p_end
+                local = search_from
+            trimmed = part.strip()
+            part_leading = len(part) - len(part.lstrip())
+            p_start = line_start + local + part_leading
+            p_end = p_start + len(trimmed)
+            sentences.append(Sentence(len(sentences), trimmed, p_start, p_end))
+            search_from = local + len(part)
     return sentences
 
 

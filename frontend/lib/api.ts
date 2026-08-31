@@ -22,7 +22,7 @@ export type MatchLink = {
   resume_term: string;
   category: string;
   required: boolean;
-  quality: "exact" | "contains" | "family" | "fuzzy";
+  quality: "exact" | "contains" | "family" | "inferred" | "fuzzy";
   score: number;
   jd_sentence_index: number;
   jd_sentence_text: string;
@@ -48,9 +48,19 @@ export type TermRow = {
   label?: string;
   required: boolean;
   matched: boolean;
-  quality: "exact" | "contains" | "family" | "fuzzy" | null;
+  quality: "exact" | "contains" | "family" | "inferred" | "fuzzy" | null;
   score: number | null;
   resume_term: string | null;
+  suggested?: boolean | null;
+  hint?: string;
+};
+
+export type ConfirmItem = {
+  term: string;
+  kind: string;
+  required: boolean;
+  suggested: boolean | null;
+  hint: string;
 };
 
 export type FitnessResult = {
@@ -62,6 +72,7 @@ export type FitnessResult = {
   links: MatchLink[];
   required_terms: TermRow[];
   optional_terms: TermRow[];
+  confirm_items: ConfirmItem[];
   missing_required: string[];
   missing_optional: string[];
   jd_sentences: Sentence[];
@@ -105,6 +116,7 @@ export async function analyzeFitness(params: {
   jobDescription: string;
   file?: File | null;
   resumeText?: string;
+  confirmations?: Record<string, boolean>;
 }): Promise<FitnessResult> {
   const form = new FormData();
   form.append("job_description", params.jobDescription);
@@ -114,6 +126,9 @@ export async function analyzeFitness(params: {
     form.append("resume_text", params.resumeText);
   } else {
     throw new Error("Provide a resume file or pasted text");
+  }
+  if (params.confirmations && Object.keys(params.confirmations).length > 0) {
+    form.append("confirmations", JSON.stringify(params.confirmations));
   }
 
   const res = await fetch(`${API_BASE}/api/analyze`, {

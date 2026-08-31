@@ -6,15 +6,20 @@ Deterministic matching rules, best-first:
   1. *exact*   — the same ontology term appears in both documents (highest value);
   2. *contains* — a multi-word term's significant tokens all appear within a
      nearby window of one resume sentence (contextual match);
-  3. *fuzzy*   — a single long token matches a resume token within a fixed
-     similarity threshold (difflib, deterministic).
+  3. *family* — the JD term is a broad family of a more specific resume skill
+     (e.g. "SQL" -> "PostgreSQL").
+
+These lexical tiers never guess: a match exists only when a term really appears
+or a deterministic family relation holds. Semantic inference beyond the text —
+"TypeScript satisfies JavaScript", novel skills, equivalences the list does not
+know about — is the job of the LLM-assisted *hybrid* layer (see hybrid.py /
+llm_extract.py), never of this module.
 """
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from difflib import SequenceMatcher
 
 from fairhire.fitness.ner import (
     ParsedDoc,
@@ -25,12 +30,12 @@ from fairhire.fitness.ner import (
 EXACT_SCORE = 1.0
 CONTAINS_SCORE = 0.75
 FAMILY_SCORE = 0.7
-FUZZY_SCORE = 0.55
+INFERRED_SCORE = 0.85
 MIN_MATCH_SCORE = 0.5
 
-_FUZZY_MIN_LEN = 6
-_FUZZY_MIN_RATIO = 0.85
-_CONTAINS_WINDOW = 10
+# Max gap (in tokens) between the first and last significant token of a
+# multi-word term that still counts as one "contains" match.
+_CONTAINS_WINDOW = 6
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9+#.]+")
 
@@ -165,30 +170,16 @@ def _family_match(
         tok = re.sub(r"[^a-z0-9]", "", occ.text.lower())
         if not tok or len(tok) < len(key):
             continue
+        # The specific resume skill must be mostly contained by the JD's
+        # broader term (e.g. "Postgres" ⊃ "SQL"). Guard against accidental
+        # prefix coincidences like "data" -> "databricks".
+        if len(key) / len(tok) < 0.4 and key != "sql":
+            continue
         if key == "sql":
             if tok.startswith("sql") or tok.endswith("sql"):
                 return occ.variant, occ.sentence_index, occ.start, occ.end, occ.text
         elif tok.startswith(key) or tok.endswith(key):
             return occ.variant, occ.sentence_index, occ.start, occ.end, occ.text
-    return None
-
-
-def _fuzzy_match(resume: ParsedDoc, canonical: str) -> tuple[str, int, int, int, str] | None:
-    """Single long token matched to a resume token by similarity."""
-    if len(canonical) < _FUZZY_MIN_LEN:
-        return None
-    cleaned = re.sub(r"[\s#+.]", "", canonical).lower()
-    if len(cleaned) < _FUZZY_MIN_LEN:
-        return None
-
-    for sentence in resume.sentences:
-        for word, start, end in _token_spans(sentence.text):
-            word_clean = word.lower()
-            if len(word_clean) < 5:
-                continue
-            ratio = SequenceMatcher(None, cleaned, word_clean).ratio()
-            if ratio >= _FUZZY_MIN_RATIO:
-                return word, sentence.index, start, end, word
     return None
 
 
@@ -269,18 +260,6 @@ def match_documents(jd: ParsedDoc, resume: ParsedDoc) -> MatchResult:
             link = build_link(
                 canonical, jd_occ, None, "family", FAMILY_SCORE,
                 matched_text, sent_idx, s_start, s_end, required,
-            )
-            if link:
-                result.links.append(link)
-                (result.matched_required if required else result.matched_optional).append(canonical)
-            continue
-
-        fuzzy = _fuzzy_match(resume, canonical)
-        if fuzzy is not None:
-            word, sent_idx, s_start, s_end, variant = fuzzy
-            link = build_link(
-                canonical, jd_occ, None, "fuzzy", FUZZY_SCORE,
-                variant, sent_idx, s_start, s_end, required,
             )
             if link:
                 result.links.append(link)

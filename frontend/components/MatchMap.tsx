@@ -14,8 +14,8 @@ const COLORS = [
   "#f09ad0",
 ];
 
-const MARK_INK = "#0c0f0d";
-const PANEL = "#121614";
+const MARK_INK = "#1b1a16";
+const PANEL = "#ffffff";
 
 function colorFor(term: string): string {
   let h = 0;
@@ -27,8 +27,15 @@ const QUALITY_LABEL: Record<MatchLink["quality"], string> = {
   exact: "exact match",
   contains: "contextual",
   family: "family match",
+  inferred: "inferred (superset)",
   fuzzy: "near match",
 };
+
+/*
+ * The backend no longer emits the `fuzzy` tier — a match only exists when a
+ * term truly appears, holds as a deterministic family relation, or is entailed
+ * by a curated superset. The key is kept here for API/type compatibility.
+ */
 
 type Line = {
   linkIdx: number;

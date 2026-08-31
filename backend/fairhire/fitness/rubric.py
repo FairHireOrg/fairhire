@@ -4,11 +4,12 @@ Pipeline:
   1. Deterministic NER parse of both documents (always).
   2. Optional DeepSeek extraction of *structured requirements* (hybrid mode)
      when a key is configured — covers soft skills, degrees, years, abilities.
-  3. Deterministic matching of every requirement (ontology tiers / containment /
-     regex) -> links with exact spans.
-  4. Weighted, explainable scoring.
-
-The LLM only chooses what to look for; it never decides whether a match exists.
+  3. Matcher: lexical tiers first (exact / contains / family); for requirements
+     the lexical tiers can't resolve, the LLM decides whether the resume
+     genuinely satisfies them (supersets, synonyms, novel skills), anchored to a
+     real resume quote.
+  4. Deterministic, weighted scoring — the LLM may only move a requirement
+     between matched/missing; it never produces a grade.
 """
 
 from __future__ import annotations
@@ -54,6 +55,7 @@ class FitnessReport:
     links: list[dict[str, Any]]
     required_terms: list[dict[str, Any]]
     optional_terms: list[dict[str, Any]]
+    confirm_items: list[dict[str, Any]]
     missing_required: list[str]
     missing_optional: list[str]
     jd_sentences: list[dict[str, Any]]
@@ -77,6 +79,7 @@ class FitnessReport:
             "links": self.links,
             "required_terms": self.required_terms,
             "optional_terms": self.optional_terms,
+            "confirm_items": self.confirm_items,
             "missing_required": self.missing_required,
             "missing_optional": self.missing_optional,
             "jd_sentences": self.jd_sentences,
@@ -147,6 +150,7 @@ def score_resume(
     resume_features: ResumeFeatures | None = None,
     *,
     preextracted: bool = False,
+    confirmations: dict[str, bool] | None = None,
 ) -> FitnessReport:
     del style_mode, preextracted
     config = config or Config()
@@ -156,6 +160,7 @@ def score_resume(
 
     rows: list[RequirementMatchRow] = []
     links: list[dict[str, Any]] = []
+    confirm_items: list[dict[str, Any]] = []
     missing_required: list[str] = []
     missing_optional: list[str] = []
     mode = "deterministic"
@@ -167,9 +172,13 @@ def score_resume(
         requirements = extract_requirements(job_description, config)
         llm_evidence = extract_resume_evidence(resume_text, config)
         if requirements:
-            hybrid: HybridResult = match_requirements(requirements, jd, resume, llm_evidence)
+            hybrid: HybridResult = match_requirements(
+                requirements, jd, resume, llm_evidence,
+                config=config, confirmations=confirmations,
+            )
             rows = hybrid.rows
             links = [lnk.to_dict() for lnk in hybrid.links]
+            confirm_items = [c.to_dict() for c in hybrid.confirm_items]
             missing_required = list(hybrid.missing_required)
             missing_optional = list(hybrid.missing_optional)
             mode = "hybrid"
@@ -178,6 +187,13 @@ def score_resume(
         match = match_documents(jd, resume)
         rows, missing_required, missing_optional = _deterministic_rows(jd, match)
         links = [lnk.to_dict() for lnk in match.links]
+
+    if not confirm_items:
+        confirm_items = [
+            {"term": r.term, "kind": r.kind, "required": r.required, "suggested": None, "hint": ""}
+            for r in rows
+            if not r.matched
+        ]
 
     overall, dims, blockers = compute_score(rows, resume)
 
@@ -203,6 +219,7 @@ def score_resume(
         links=links,
         required_terms=_rows_to_terms(required_rows),
         optional_terms=_rows_to_terms(optional_rows),
+        confirm_items=confirm_items,
         missing_required=missing_required,
         missing_optional=missing_optional,
         jd_sentences=_sentence_dicts(jd),

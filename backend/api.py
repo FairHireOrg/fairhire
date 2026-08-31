@@ -1,7 +1,8 @@
-"""FairHire Resume–JD fitness API (deterministic, LLM-free)."""
+"""FairHire Resume–JD fitness API (rule-based scoring, optional LLM matching)."""
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -47,7 +48,14 @@ async def analyze(
     job_description: str = Form(...),
     resume: UploadFile | None = File(None),
     resume_text: str | None = Form(None),
+    confirmations: str | None = Form(None),
 ) -> dict[str, Any]:
+    conf: dict[str, bool] | None = None
+    if confirmations:
+        try:
+            conf = {str(k).strip().lower(): bool(v) for k, v in json.loads(confirmations).items()}
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(status_code=400, detail="Invalid confirmations payload") from exc
     try:
         if resume is not None and resume.filename:
             data = await resume.read()
@@ -57,11 +65,13 @@ async def analyze(
                 file_bytes=data,
                 filename=resume.filename,
                 job_description=job_description,
+                confirmations=conf,
             )
         if resume_text and resume_text.strip():
             return analyze_fitness(
                 job_description=job_description,
                 resume_text=resume_text,
+                confirmations=conf,
             )
         raise ValueError("Provide a resume file or resume_text")
     except ValueError as exc:
