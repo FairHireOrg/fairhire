@@ -33,7 +33,8 @@ def main() -> None:
     print("=" * 60)
     print("FairHire — Resume–JD Fitness")
     print("=" * 60)
-    print(f"Overall: {result['overall_score']:.1f}  |  extraction={result['extraction_mode']}")
+    print(f"Compatibility: {result['compatibility_score']:.1f} | Resume quality: {result['resume_quality_score']:.1f}")
+    print(f"Checklist: {result['checklist_id']} | Rules: {result['ruleset_version']}")
     if result.get("job_title"):
         print(f"JD title: {result['job_title']}")
     print()

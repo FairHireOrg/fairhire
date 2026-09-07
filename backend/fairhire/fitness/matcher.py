@@ -1,46 +1,29 @@
-"""Cross-document term matching: job description -> resume.
-
-Produces the "matching lines" data the frontend draws between the two panes.
-
-Deterministic matching rules, best-first:
-  1. *exact*   — the same ontology term appears in both documents (highest value);
-  2. *contains* — a multi-word term's significant tokens all appear within a
-     nearby window of one resume sentence (contextual match);
-  3. *family* — the JD term is a broad family of a more specific resume skill
-     (e.g. "SQL" -> "PostgreSQL").
-
-These lexical tiers never guess: a match exists only when a term really appears
-or a deterministic family relation holds. Semantic inference beyond the text —
-"TypeScript satisfies JavaScript", novel skills, equivalences the list does not
-know about — is the job of the LLM-assisted *hybrid* layer (see hybrid.py /
-llm_extract.py), never of this module.
-"""
+"""Deterministic, evidence-backed matching between a JD and a resume."""
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
 
-from fairhire.fitness.ner import (
-    ParsedDoc,
-    TermOccurrence,
-    term_tokens,
-)
+from fairhire.fitness.ner import ParsedDoc, TermOccurrence, term_tokens
 
 EXACT_SCORE = 1.0
-CONTAINS_SCORE = 0.75
+CONTEXTUAL_SCORE = 0.75
+CONTAINS_SCORE = CONTEXTUAL_SCORE
 FAMILY_SCORE = 0.7
-INFERRED_SCORE = 0.85
 MIN_MATCH_SCORE = 0.5
 
-# Max gap (in tokens) between the first and last significant token of a
-# multi-word term that still counts as one "contains" match.
 _CONTAINS_WINDOW = 6
-
-_TOKEN_RE = re.compile(r"[A-Za-z0-9+#.]+")
-
-# Preferred resume sections for picking the "best" occurrence of a matched term.
+_TOKEN_RE = re.compile(r"[A-Za-z0-9+#]+(?:\.[A-Za-z0-9]+)*")
 _SECTION_RANK = {"skills": 4, "experience": 3, "projects": 2, "summary": 1, "education": 1}
+
+# Reviewed relationships only. Broad prefixes made Java match JavaScript.
+FAMILY_RELATIONSHIPS: dict[str, tuple[str, ...]] = {
+    "SQL": ("PostgreSQL", "MySQL", "SQLite", "SQL Server", "Oracle"),
+    "Spring": ("Spring Boot",),
+    ".NET": ("ASP.NET",),
+    "React": ("React Native",),
+}
 
 
 @dataclass
@@ -92,191 +75,153 @@ class MatchResult:
 
 
 def _sentence_text(doc: ParsedDoc, index: int) -> str:
-    if 0 <= index < len(doc.sentences):
-        return doc.sentences[index].text
-    return ""
+    return doc.sentences[index].text if 0 <= index < len(doc.sentences) else ""
 
 
-def _best_resume_occurrence(
-    resume: ParsedDoc, canonical: str
-) -> TermOccurrence | None:
-    occs = resume.occurrence_map().get(canonical, [])
-    if not occs:
+def _best_resume_occurrence(resume: ParsedDoc, canonical: str) -> TermOccurrence | None:
+    occurrences = resume.occurrence_map().get(canonical, [])
+    if not occurrences:
         return None
 
-    def rank(occ: TermOccurrence) -> int:
-        for section, r in _SECTION_RANK.items():
+    def rank(occurrence: TermOccurrence) -> int:
+        for section, score in _SECTION_RANK.items():
             body = resume.section_bodies.get(section, "")
-            if body and body.find(occ.text) != -1:
-                return r
-        # Prefer occurrences inside substantive (non-header) sentences.
-        sent = _sentence_text(resume, occ.sentence_index)
-        if len(sent) >= 20:
-            return 2
-        return 0
+            if body and occurrence.text in body:
+                return score
+        return 2 if len(_sentence_text(resume, occurrence.sentence_index)) >= 20 else 0
 
-    return max(occs, key=lambda o: (rank(o), -o.start))
+    return max(occurrences, key=lambda occurrence: (rank(occurrence), -occurrence.start))
 
 
 def _token_spans(text: str) -> list[tuple[str, int, int]]:
-    return [(m.group(0), m.start(), m.end()) for m in _TOKEN_RE.finditer(text)]
+    return [(match.group(0), match.start(), match.end()) for match in _TOKEN_RE.finditer(text)]
 
 
 def _contains_match(
     resume: ParsedDoc, canonical: str
 ) -> tuple[str, int, int, int, str] | None:
-    """Return (matched_snippet, sentence_index, start, end, variant) if all
-    significant tokens of `canonical` appear near each other in one sentence."""
+    """Find every meaningful phrase token inside one nearby sentence window."""
     tokens = term_tokens(canonical)
     if len(tokens) < 2:
         return None
-
     for sentence in resume.sentences:
         spans = _token_spans(sentence.text.lower())
         positions: list[int] = []
-        for tok in tokens:
-            for idx, (word, _, _) in enumerate(spans):
-                if word.lower() == tok:
-                    positions.append(idx)
-                    break
-        if len(positions) == len(tokens):
-            start_idx = min(positions)
-            end_idx = max(positions)
-            if end_idx - start_idx > _CONTAINS_WINDOW:
-                continue
-            _, s_start, _ = spans[start_idx]
-            _, _, s_end = spans[end_idx]
-            snippet = sentence.text[s_start - sentence.start : s_end - sentence.start]
-            return snippet, sentence.index, s_start, s_end, " ".join(tokens)
+        for token in tokens:
+            position = next(
+                (index for index, (word, _, _) in enumerate(spans) if word.lower() == token),
+                None,
+            )
+            if position is None:
+                break
+            positions.append(position)
+        if len(positions) != len(tokens):
+            continue
+        first, last = min(positions), max(positions)
+        if last - first > _CONTAINS_WINDOW:
+            continue
+        bridge_words = {word for word, _, _ in spans[first:last + 1]} - set(tokens)
+        if not bridge_words <= {"and", "of", "for", "with", "the", "data", "backend", "large", "scale", "based"}:
+            continue
+        local_start = spans[first][1]
+        local_end = spans[last][2]
+        snippet = sentence.text[local_start:local_end]
+        return snippet, sentence.index, sentence.start + local_start, sentence.start + local_end, snippet
     return None
 
 
 def _family_match(
     resume: ParsedDoc, canonical: str
 ) -> tuple[str, int, int, int, str] | None:
-    """A JD term is often a *family* of the resume's more specific skill.
-
-    E.g. JD "SQL" matches resume "PostgreSQL"/"MySQL"; JD "Spring" matches
-    resume "Spring Boot". Only applied for single-token terms and only when
-    the resume term starts-with or ends-with the JD term (deterministic).
-    """
-    key = re.sub(r"[^a-z0-9]", "", canonical.lower())
-    if not key:
-        return None
-    if len(key) < 4 and key != "sql":
-        return None
-
-    for occ in resume.occurrences:
-        tok = re.sub(r"[^a-z0-9]", "", occ.text.lower())
-        if not tok or len(tok) < len(key):
-            continue
-        # The specific resume skill must be mostly contained by the JD's
-        # broader term (e.g. "Postgres" ⊃ "SQL"). Guard against accidental
-        # prefix coincidences like "data" -> "databricks".
-        if len(key) / len(tok) < 0.4 and key != "sql":
-            continue
-        if key == "sql":
-            if tok.startswith("sql") or tok.endswith("sql"):
-                return occ.variant, occ.sentence_index, occ.start, occ.end, occ.text
-        elif tok.startswith(key) or tok.endswith(key):
-            return occ.variant, occ.sentence_index, occ.start, occ.end, occ.text
+    for related in FAMILY_RELATIONSHIPS.get(canonical, ()):
+        occurrence = _best_resume_occurrence(resume, related)
+        if occurrence is not None:
+            return occurrence.variant, occurrence.sentence_index, occurrence.start, occurrence.end, occurrence.text
     return None
+
+
+def link_is_valid(link: Link, jd: ParsedDoc, resume: ParsedDoc) -> bool:
+    if not (0 <= link.jd_sentence_index < len(jd.sentences)):
+        return False
+    if not (0 <= link.resume_sentence_index < len(resume.sentences)):
+        return False
+    if not (0 <= link.jd_start < link.jd_end <= len(jd.text)):
+        return False
+    if not (0 <= link.resume_start < link.resume_end <= len(resume.text)):
+        return False
+    jd_sentence = jd.sentences[link.jd_sentence_index]
+    resume_sentence = resume.sentences[link.resume_sentence_index]
+    if not (jd_sentence.start <= link.jd_start < link.jd_end <= jd_sentence.end):
+        return False
+    if not (resume_sentence.start <= link.resume_start < link.resume_end <= resume_sentence.end):
+        return False
+    return (jd.text[link.jd_start:link.jd_end] == link.jd_term
+            and resume.text[link.resume_start:link.resume_end] == link.resume_term
+            and bool(link.resume_term.strip())
+            and link.quality in {"exact", "contextual", "family"})
 
 
 def match_documents(jd: ParsedDoc, resume: ParsedDoc) -> MatchResult:
     result = MatchResult()
-
-    def build_link(
-        canonical: str,
-        jd_occ: TermOccurrence,
-        resume_occ: TermOccurrence | None,
-        quality: str,
-        score: float,
-        resume_term: str,
-        resume_sentence_index: int,
-        resume_start: int,
-        resume_end: int,
-        required: bool,
-    ) -> Link | None:
-        jd_sent = _sentence_text(jd, jd_occ.sentence_index)
-        resume_sent = _sentence_text(resume, resume_sentence_index)
-        if not jd_sent.strip():
-            return None
-        return Link(
-            canonical=canonical,
-            jd_term=jd_occ.variant,
-            resume_term=resume_term,
-            category=jd_occ.category,
-            required=required,
-            quality=quality,
-            score=score,
-            jd_sentence_index=jd_occ.sentence_index,
-            jd_sentence_text=jd_sent,
-            jd_start=jd_occ.start,
-            jd_end=jd_occ.end,
-            resume_sentence_index=resume_sentence_index,
-            resume_sentence_text=resume_sent,
-            resume_start=resume_start,
-            resume_end=resume_end,
-        )
-
-    # Only the first (best) occurrence of each JD term needs a link; we use the
-    # occurrence inside the required/optional zone.
     jd_by_canonical: dict[str, TermOccurrence] = {}
-    for occ in jd.occurrences:
-        jd_by_canonical.setdefault(occ.canonical, occ)
+    for occurrence in jd.occurrences:
+        jd_by_canonical.setdefault(occurrence.canonical, occurrence)
 
     required_set = set(jd.required_terms)
     for canonical in [*jd.required_terms, *jd.optional_terms]:
-        jd_occ = jd_by_canonical[canonical]
+        jd_occurrence = jd_by_canonical.get(canonical)
+        if jd_occurrence is None:
+            continue
         required = canonical in required_set
-
-        exact = _best_resume_occurrence(resume, canonical)
-        if exact is not None:
-            link = build_link(
-                canonical, jd_occ, exact, "exact", EXACT_SCORE,
-                exact.variant, exact.sentence_index, exact.start, exact.end, required,
+        resume_occurrence = _best_resume_occurrence(resume, canonical)
+        found: tuple[str, int, int, int, str] | None = None
+        quality, score = "exact", EXACT_SCORE
+        if resume_occurrence is not None:
+            found = (
+                resume_occurrence.variant, resume_occurrence.sentence_index,
+                resume_occurrence.start, resume_occurrence.end, resume_occurrence.text,
             )
-            if link:
-                result.links.append(link)
-                (result.matched_required if required else result.matched_optional).append(canonical)
-            continue
-
-        contains = _contains_match(resume, canonical)
-        if contains is not None:
-            snippet, sent_idx, s_start, s_end, variant = contains
-            link = build_link(
-                canonical, jd_occ, None, "contains", CONTAINS_SCORE,
-                variant, sent_idx, s_start, s_end, required,
-            )
-            if link:
-                result.links.append(link)
-                (result.matched_required if required else result.matched_optional).append(canonical)
-            continue
-
-        family = _family_match(resume, canonical)
-        if family is not None:
-            variant, sent_idx, s_start, s_end, matched_text = family
-            link = build_link(
-                canonical, jd_occ, None, "family", FAMILY_SCORE,
-                matched_text, sent_idx, s_start, s_end, required,
-            )
-            if link:
-                result.links.append(link)
-                (result.matched_required if required else result.matched_optional).append(canonical)
-            continue
-
-        if required:
-            result.missing_required.append(canonical)
         else:
-            result.missing_optional.append(canonical)
+            found = _contains_match(resume, canonical)
+            if found is not None:
+                quality, score = "contextual", CONTEXTUAL_SCORE
+            else:
+                found = _family_match(resume, canonical)
+                if found is not None:
+                    quality, score = "family", FAMILY_SCORE
 
-    # Deterministic order: required first, then higher score, then term.
-    result.links.sort(
-        key=lambda lnk: (0 if lnk.required else 1, -lnk.score, lnk.canonical.lower())
-    )
+        link = None
+        if found is not None:
+            _, sentence_index, start, end, matched_text = found
+            link = Link(
+                canonical=canonical,
+                jd_term=jd.text[jd_occurrence.start:jd_occurrence.end],
+                resume_term=matched_text,
+                category=jd_occurrence.category,
+                required=required,
+                quality=quality,
+                score=score,
+                jd_sentence_index=jd_occurrence.sentence_index,
+                jd_sentence_text=_sentence_text(jd, jd_occurrence.sentence_index),
+                jd_start=jd_occurrence.start,
+                jd_end=jd_occurrence.end,
+                resume_sentence_index=sentence_index,
+                resume_sentence_text=_sentence_text(resume, sentence_index),
+                resume_start=start,
+                resume_end=end,
+            )
+            if not link_is_valid(link, jd, resume):
+                link = None
+
+        if link is not None:
+            result.links.append(link)
+            (result.matched_required if required else result.matched_optional).append(canonical)
+        else:
+            (result.missing_required if required else result.missing_optional).append(canonical)
+
+    result.links.sort(key=lambda link: (0 if link.required else 1, -link.score, link.canonical.lower()))
     return result
 
 
 def links_to_dicts(links: list[Link]) -> list[dict]:
-    return [lnk.to_dict() for lnk in links]
+    return [link.to_dict() for link in links]

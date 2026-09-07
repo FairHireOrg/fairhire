@@ -12,7 +12,7 @@ from fairhire.parser import parse_pdf
 
 def load_resume_text(resume_text: str | None = None, resume_path: str | None = None) -> str:
     if resume_text and resume_text.strip():
-        return resume_text.strip()
+        return resume_text
     if not resume_path:
         raise ValueError("Provide resume_text or resume_path")
     lower = resume_path.lower()
@@ -34,18 +34,20 @@ def analyze_fitness(
     style_mode: StyleMode = "balanced",
     config: Any | None = None,
     confirmations: dict[str, bool] | None = None,
+    requirements: list[dict] | None = None,
 ) -> dict[str, Any]:
-    if not job_description or not job_description.strip():
+    if job_description is None:
         raise ValueError("job_description is required")
 
     text = load_resume_text(resume_text=resume_text, resume_path=resume_path)
     report = score_resume(
         text,
-        job_description.strip(),
+        job_description or "",
         style_mode=style_mode,
         config=config,
         preextracted=True,
         confirmations=confirmations,
+        requirements=requirements,
     )
     payload = report.to_dict()
     payload["resume_text"] = text
@@ -59,6 +61,7 @@ def analyze_upload_bytes(
     style_mode: StyleMode = "balanced",
     config: Any | None = None,
     confirmations: dict[str, bool] | None = None,
+    requirements: list[dict] | None = None,
 ) -> dict[str, Any]:
     suffix = os.path.splitext(filename or "resume.pdf")[1].lower() or ".pdf"
     if suffix not in {".pdf", ".txt", ".md"}:
@@ -74,6 +77,7 @@ def analyze_upload_bytes(
             style_mode=style_mode,
             config=config,
             confirmations=confirmations,
+            requirements=requirements,
         )
     finally:
         try:

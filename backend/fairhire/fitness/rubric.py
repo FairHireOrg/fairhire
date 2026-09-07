@@ -1,15 +1,9 @@
-"""Resume–JD fitness report.
+"""Build an explainable ATS-parsability report from deterministic evidence.
 
-Pipeline:
-  1. Deterministic NER parse of both documents (always).
-  2. Optional DeepSeek extraction of *structured requirements* (hybrid mode)
-     when a key is configured — covers soft skills, degrees, years, abilities.
-  3. Matcher: lexical tiers first (exact / contains / family); for requirements
-     the lexical tiers can't resolve, the LLM decides whether the resume
-     genuinely satisfies them (supersets, synonyms, novel skills), anchored to a
-     real resume quote.
-  4. Deterministic, weighted scoring — the LLM may only move a requirement
-     between matched/missing; it never produces a grade.
+The score measures how cleanly an ATS / parser can read the *resume*. The job
+description is used only as a relevance vector (which concepts it asks for) to
+surface keyword presence — it never drives the score. Everything is computed with
+exact rules, so identical input always yields an identical score.
 """
 
 from __future__ import annotations
@@ -18,240 +12,131 @@ from dataclasses import dataclass
 from typing import Any
 
 from fairhire.config import Config
-from fairhire.fitness.extract import (
-    JDFeatures,
-    ResumeFeatures,
-    extract_jd_features,
-    extract_resume_features,
-)
-from fairhire.fitness.hybrid import HybridResult, RequirementMatchRow, match_requirements
-from fairhire.fitness.matcher import MatchResult, match_documents
-from fairhire.fitness.ner import ParsedDoc, parse_job_description, parse_resume
-from fairhire.fitness.score import Blockers, Dimension, compute_score
-
-StyleMode = str  # kept for API compatibility; scoring is a single deterministic mode
+from fairhire.fitness import ats
+from fairhire.fitness.extract import ResumeFeatures, extract_resume_features
+from fairhire.fitness.hybrid import match_requirements
+from fairhire.fitness.ner import parse_job_description, parse_resume
+from fairhire.fitness.requirements import RULESET_VERSION, checklist_id, extract_checklist, validate_checklist
 
 DISCLAIMER = (
-    "FairHire scores fit with deterministic rules: NER-style term matching over "
-    "a curated skill ontology plus regex rules for structured fields. When a "
-    "DeepSeek key is configured, it only extracts structured requirements "
-    "(soft skills, degrees, years) — matching and scoring stay deterministic "
-    "and explainable."
+    "This score measures how cleanly an ATS / parser can read your resume. It is "
+    "not a hiring probability, a measure of ability, or a verdict on bias. The job "
+    "description is only used to surface relevant keywords; it never affects the score."
 )
 
-MODE_LABEL = {
-    "hybrid": "hybrid (DeepSeek extraction)",
-    "deterministic": "deterministic (no LLM)",
-}
+StyleMode = str  # kept for API compatibility; scoring is a single deterministic mode
 
 
 @dataclass
 class FitnessReport:
-    overall_score: float
-    extraction_mode: str
+    ats_score: float
+    ats_grade: str
+    extraction_status: str
     job_title: str | None
-    dimensions: list[Dimension]
-    blockers: list[Blockers]
-    links: list[dict[str, Any]]
-    required_terms: list[dict[str, Any]]
-    optional_terms: list[dict[str, Any]]
-    confirm_items: list[dict[str, Any]]
-    missing_required: list[str]
-    missing_optional: list[str]
-    jd_sentences: list[dict[str, Any]]
-    resume_sentences: list[dict[str, Any]]
+    dimensions: list[dict[str, Any]]
+    recommendations: list[dict[str, Any]]
+    keyword_coverage: dict[str, int]
+    keyword_groups: list[dict[str, Any]]
     resume_fields: dict[str, Any]
-    resume_titles: list[str]
     sections_found: dict[str, bool]
-    resume_char_count: int
-    jd_features: dict[str, Any]
-    resume_features: dict[str, Any]
-    disclaimer: str
+    skills: list[str]
     resume_text: str
+    job_description: str
+    checklist_id: str
+    ruleset_version: str
+    ai_available: bool
+    disclaimer: str
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "overall_score": self.overall_score,
-            "extraction_mode": self.extraction_mode,
+            "ats_score": self.ats_score,
+            "ats_grade": self.ats_grade,
+            "extraction_status": self.extraction_status,
             "job_title": self.job_title,
-            "dimensions": [d.to_dict() for d in self.dimensions],
-            "blockers": [b.to_dict() for b in self.blockers],
-            "links": self.links,
-            "required_terms": self.required_terms,
-            "optional_terms": self.optional_terms,
-            "confirm_items": self.confirm_items,
-            "missing_required": self.missing_required,
-            "missing_optional": self.missing_optional,
-            "jd_sentences": self.jd_sentences,
-            "resume_sentences": self.resume_sentences,
+            "dimensions": self.dimensions,
+            "recommendations": self.recommendations,
+            "keyword_coverage": self.keyword_coverage,
+            "keyword_groups": self.keyword_groups,
             "resume_fields": self.resume_fields,
-            "resume_titles": self.resume_titles,
             "sections_found": self.sections_found,
-            "resume_char_count": self.resume_char_count,
-            "jd_features": self.jd_features,
-            "resume_features": self.resume_features,
-            "disclaimer": self.disclaimer,
+            "skills": self.skills,
             "resume_text": self.resume_text,
+            "job_description": self.job_description,
+            "checklist_id": self.checklist_id,
+            "ruleset_version": self.ruleset_version,
+            "ai_available": self.ai_available,
+            "disclaimer": self.disclaimer,
+            "scorable": bool(self.resume_text and self.resume_text.strip()),
         }
 
 
-def _sentence_dicts(doc: ParsedDoc) -> list[dict[str, Any]]:
-    return [
-        {"index": s.index, "text": s.text, "start": s.start, "end": s.end}
-        for s in doc.sentences
-    ]
-
-
-def _rows_to_terms(rows: list[RequirementMatchRow]) -> list[dict[str, Any]]:
-    return [r.to_dict() for r in rows]
-
-
-def _deterministic_rows(
-    jd: ParsedDoc, match: MatchResult
-) -> tuple[list[RequirementMatchRow], list[str], list[str]]:
-    link_by_canonical = {lnk.canonical: lnk for lnk in match.links}
-    required: list[RequirementMatchRow] = []
-    for term in jd.required_terms:
-        lnk = link_by_canonical.get(term)
-        required.append(
-            RequirementMatchRow(
-                term=term,
-                kind="skill",
-                required=True,
-                matched=lnk is not None,
-                quality=lnk.quality if lnk else None,
-                score=lnk.score if lnk else 0.0,
-                resume_term=lnk.resume_term if lnk else None,
-            )
-        )
-    optional: list[RequirementMatchRow] = []
-    for term in jd.optional_terms:
-        lnk = link_by_canonical.get(term)
-        optional.append(
-            RequirementMatchRow(
-                term=term,
-                kind="skill",
-                required=False,
-                matched=lnk is not None,
-                quality=lnk.quality if lnk else None,
-                score=lnk.score if lnk else 0.0,
-                resume_term=lnk.resume_term if lnk else None,
-            )
-        )
-    return required + optional, list(match.missing_required), list(match.missing_optional)
+def _serializable_fields(resume) -> dict[str, Any]:
+    fields = dict(resume.fields)
+    if not isinstance(fields.get("titles"), list):
+        fields["titles"] = []
+    return fields
 
 
 def score_resume(
     resume_text: str,
     job_description: str,
-    style_mode: StyleMode = "balanced",
+    style_mode: str = "balanced",
     config: Config | None = None,
-    jd_features: JDFeatures | None = None,
     resume_features: ResumeFeatures | None = None,
     *,
     preextracted: bool = False,
     confirmations: dict[str, bool] | None = None,
+    requirements: list[dict] | None = None,
 ) -> FitnessReport:
-    del style_mode, preextracted
+    del style_mode, preextracted, confirmations
     config = config or Config()
-
-    jd = parse_job_description(job_description)
     resume = parse_resume(resume_text)
+    jd = parse_job_description(job_description)
 
-    rows: list[RequirementMatchRow] = []
-    links: list[dict[str, Any]] = []
-    confirm_items: list[dict[str, Any]] = []
-    missing_required: list[str] = []
-    missing_optional: list[str] = []
-    mode = "deterministic"
-    llm_evidence = None
+    # ---- ATS parsability: resume-only, deterministic ----
+    result = ats.evaluate_ats(resume)
 
-    if config.llm_extraction_enabled:
-        from fairhire.fitness.llm_extract import extract_requirements, extract_resume_evidence
+    # ---- JD as a relevance VECTOR (informational only, never scored) ----
+    checklist = extract_checklist(jd) if requirements is None else validate_checklist(requirements, jd)
+    hybrid = match_requirements(checklist, jd, resume, max_requirements=200)
+    keyword_groups = [
+        {
+            "term": row.term,
+            "kind": row.kind,
+            "required": row.required,
+            "matched": row.matched,
+            "resume_term": row.resume_term,
+        }
+        for row in hybrid.rows
+    ]
+    keyword_coverage = {
+        "matched": sum(1 for row in hybrid.rows if row.matched),
+        "total": len(hybrid.rows),
+    }
 
-        requirements = extract_requirements(job_description, config)
-        llm_evidence = extract_resume_evidence(resume_text, config)
-        if requirements:
-            hybrid: HybridResult = match_requirements(
-                requirements, jd, resume, llm_evidence,
-                config=config, confirmations=confirmations,
-            )
-            rows = hybrid.rows
-            links = [lnk.to_dict() for lnk in hybrid.links]
-            confirm_items = [c.to_dict() for c in hybrid.confirm_items]
-            missing_required = list(hybrid.missing_required)
-            missing_optional = list(hybrid.missing_optional)
-            mode = "hybrid"
-
-    if not rows:
-        match = match_documents(jd, resume)
-        rows, missing_required, missing_optional = _deterministic_rows(jd, match)
-        links = [lnk.to_dict() for lnk in match.links]
-
-    if not confirm_items:
-        confirm_items = [
-            {"term": r.term, "kind": r.kind, "required": r.required, "suggested": None, "hint": ""}
-            for r in rows
-            if not r.matched
-        ]
-
-    overall, dims, blockers = compute_score(rows, resume)
-
-    jd_f = jd_features or extract_jd_features(job_description)
     res_f = resume_features or extract_resume_features(resume_text)
-    if mode == "hybrid" and llm_evidence is not None:
-        _merge_evidence(res_f, llm_evidence)
-
-    resume_titles = res_f.titles
-    if not resume_titles:
-        titles = resume.fields.get("titles") or []
-        resume_titles = titles if isinstance(titles, list) else []
-
-    required_rows = [r for r in rows if r.required]
-    optional_rows = [r for r in rows if not r.required]
+    skills = res_f.skills if isinstance(res_f.skills, list) else []
 
     return FitnessReport(
-        overall_score=overall,
-        extraction_mode=mode,
-        job_title=jd.title or jd_f.role_title,
-        dimensions=dims,
-        blockers=blockers,
-        links=links,
-        required_terms=_rows_to_terms(required_rows),
-        optional_terms=_rows_to_terms(optional_rows),
-        confirm_items=confirm_items,
-        missing_required=missing_required,
-        missing_optional=missing_optional,
-        jd_sentences=_sentence_dicts(jd),
-        resume_sentences=_sentence_dicts(resume),
+        ats_score=result.score,
+        ats_grade=result.grade,
+        extraction_status="deterministic_only" if requirements is None else "reviewed_checklist",
+        job_title=jd.title,
+        dimensions=[d.to_dict() for d in result.dimensions],
+        recommendations=[r.to_dict() for r in result.recommendations],
+        keyword_coverage=keyword_coverage,
+        keyword_groups=keyword_groups,
         resume_fields=_serializable_fields(resume),
-        resume_titles=resume_titles,
         sections_found=resume.sections,
-        resume_char_count=len(resume.text),
-        jd_features=jd_f.to_dict(),
-        resume_features=res_f.to_dict(),
-        disclaimer=DISCLAIMER,
+        skills=skills,
         resume_text=resume.text,
+        job_description=jd.text,
+        checklist_id=checklist_id(checklist),
+        ruleset_version=RULESET_VERSION,
+        ai_available=config.llm_extraction_enabled,
+        disclaimer=DISCLAIMER,
     )
 
 
-def _merge_evidence(res_f: ResumeFeatures, evidence: Any) -> None:
-    if not res_f.degrees and evidence.degree:
-        res_f.degrees = [evidence.degree]
-    existing = {s.lower() for s in res_f.skills}
-    for skill in evidence.skills or []:
-        if skill.lower() not in existing:
-            res_f.skills.append(skill)
-    res_f.skills = res_f.skills[:24]
-
-
-def _serializable_fields(resume: ParsedDoc) -> dict[str, Any]:
-    fields = dict(resume.fields)
-    titles = fields.get("titles")
-    if not isinstance(titles, list):
-        fields["titles"] = []
-    return fields
-
-
 # Back-compat alias
-Blocker = Blockers
+Blocker = Any

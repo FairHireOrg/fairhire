@@ -1,0 +1,188 @@
+- generic [active] [ref=f2e1]:
+  - generic [ref=f2e2]:
+    - complementary [ref=f2e3]:
+      - link [ref=f2e4] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f2e8]: Workspace
+      - link "Resume checker" [ref=f2e9] [cursor=pointer]:
+        - /url: "#main"
+      - button "How it works" [ref=f2e12] [cursor=pointer]
+      - generic [ref=f2e15]:
+        - generic [ref=f2e16]:
+          - heading "Parsability first." [level=3] [ref=f2e19]
+          - paragraph [ref=f2e20]: We score how a reading system extracts your resume.
+        - button "Replay tutorial" [ref=f2e21] [cursor=pointer]
+        - generic [ref=f2e24]: Built for a clearer next step.
+    - generic [ref=f2e25]:
+      - banner [ref=f2e26]:
+        - generic [ref=f2e27]:
+          - generic [ref=f2e28]: Workspace
+          - generic [ref=f2e29]: /
+          - strong [ref=f2e30]: Resume checker
+        - button "Replay tutorial" [ref=f2e31] [cursor=pointer]
+      - main [ref=f2e34]:
+        - generic [ref=f2e36]:
+          - paragraph [ref=f2e37]: Pass the automated screen
+          - heading "How cleanly a system reads your resume." [level=1] [ref=f2e38]
+          - paragraph [ref=f2e39]: An ATS-parsability score from exactly what a parser can extract. Add the job description if you also want keyword relevance.
+        - generic [ref=f2e43]:
+          - generic [ref=f2e44]:
+            - generic [ref=f2e45]:
+              - generic [ref=f2e46]:
+                - generic [ref=f2e47]:
+                  - generic [ref=f2e48]: "1"
+                  - generic [ref=f2e49]:
+                    - text: Job description
+                    - emphasis [ref=f2e50]: optional
+                - button "Try an example" [ref=f2e51] [cursor=pointer]
+              - paragraph [ref=f2e54]: Used only to check keyword relevance — it never changes your score.
+              - textbox "Job description optional" [ref=f2e55]:
+                - /placeholder: "Paste the job description here (optional)...\n\nInclude responsibilities, required skills, and preferred qualifications."
+              - generic [ref=f2e56]:
+                - generic [ref=f2e57]: Keyword relevance only
+                - generic [ref=f2e58]: 0 / 30,000
+            - generic [ref=f2e59]:
+              - generic [ref=f2e60]:
+                - generic [ref=f2e61]:
+                  - generic [ref=f2e62]: "2"
+                  - heading "Your resume" [level=2] [ref=f2e63]
+                - group "Resume input mode" [ref=f2e64]:
+                  - button "Upload file" [pressed] [ref=f2e65] [cursor=pointer]
+                  - button "Paste text" [ref=f2e66] [cursor=pointer]
+              - paragraph [ref=f2e67]: Use the version you plan to send with your application.
+              - generic [ref=f2e68]:
+                - button "Upload resume" [ref=f2e69]
+                - heading "AustinResume.pdf" [level=3] [ref=f2e104]
+                - paragraph [ref=f2e74]: 97 KB · Ready to analyze
+                - button "Choose a different file" [ref=f2e105] [cursor=pointer]
+              - generic [ref=f2e78]:
+                - generic [ref=f2e79]: Text-based PDFs work best
+                - generic [ref=f2e80]: 10 MB max
+          - generic [ref=f2e81]:
+            - paragraph [ref=f2e82]: Document contents are not saved in your browser.
+            - button "Check parsability" [ref=f2e85] [cursor=pointer]
+        - generic [ref=f2e122]:
+          - generic [ref=f2e123]:
+            - generic [ref=f2e124]:
+              - generic [ref=f2e125]: ATS parsability
+              - generic [ref=f2e126]: 94/ 100
+              - generic [ref=f2e127]: Strong
+              - heading "How cleanly a system reads your resume" [level=2] [ref=f2e128]
+              - paragraph [ref=f2e129]: Resume-only, rule-based scoring. Not a prediction of a hiring decision.
+              - button "How is this calculated?" [ref=f2e130] [cursor=pointer]
+            - generic [ref=f2e133]:
+              - heading "Parsability breakdown" [level=3] [ref=f2e134]
+              - generic [ref=f2e135]:
+                - generic [ref=f2e136]:
+                  - generic [ref=f2e137]: Section structure
+                  - strong [ref=f2e138]: 93 / 100
+                - paragraph [ref=f2e141]: "Headings found: summary, experience, skills, education, projects, publications. ATS parsers rely on clear headings."
+              - generic [ref=f2e142]:
+                - generic [ref=f2e143]:
+                  - generic [ref=f2e144]: Contact block
+                  - strong [ref=f2e145]: 100 / 100
+                - paragraph [ref=f2e148]: "5 contact signals: email, phone, location, linkedin/github, name."
+              - generic [ref=f2e149]:
+                - generic [ref=f2e150]:
+                  - generic [ref=f2e151]: Chronological experience
+                  - strong [ref=f2e152]: 100 / 100
+                - paragraph [ref=f2e155]: 2 role title(s), 3 date range(s).
+              - generic [ref=f2e156]:
+                - generic [ref=f2e157]:
+                  - generic [ref=f2e158]: Keyword-rich skills
+                  - strong [ref=f2e159]: 100 / 100
+                - paragraph [ref=f2e162]: 24 recognized technologies across 8 categories.
+              - generic [ref=f2e163]:
+                - generic [ref=f2e164]:
+                  - generic [ref=f2e165]: Education
+                  - strong [ref=f2e166]: 100 / 100
+                - paragraph [ref=f2e169]: degree, institution.
+              - generic [ref=f2e170]:
+                - generic [ref=f2e171]:
+                  - generic [ref=f2e172]: Scannable bullets
+                  - strong [ref=f2e173]: 79 / 100
+                - paragraph [ref=f2e176]: 20 bullets, 13 action verbs, 3 quantified outcomes.
+              - generic [ref=f2e177]:
+                - generic [ref=f2e178]:
+                  - generic [ref=f2e179]: Text extraction
+                  - strong [ref=f2e180]: 75 / 100
+                - paragraph [ref=f2e183]: Indicates whether the document text extracts cleanly (layout, images, tables).
+            - generic [ref=f2e184]:
+              - generic [ref=f2e185]: What was read
+              - strong [ref=f2e186]: 6/ 6 sections
+              - heading "Contact, roles and sections detected" [level=3] [ref=f2e187]
+              - paragraph [ref=f2e188]: summary · experience · skills · education · projects · publications
+              - link "See detected skills" [ref=f2e189] [cursor=pointer]:
+                - /url: "#keywords"
+          - generic [ref=f2e192]:
+            - generic [ref=f2e194]:
+              - heading "Make it ATS-clean" [level=2] [ref=f2e195]
+              - paragraph [ref=f2e196]: Prioritized, actionable fixes. Each one is easy to read by a parser.
+            - paragraph [ref=f2e197]: No ATS blockers found. Great — keep the structure.
+          - generic [ref=f2e198]:
+            - generic [ref=f2e200]:
+              - heading "What the system read" [level=2] [ref=f2e201]
+              - paragraph [ref=f2e202]: The parsed identity, sections, and detected technologies.
+            - generic [ref=f2e203]:
+              - generic [ref=f2e204]:
+                - generic [ref=f2e205]:
+                  - term [ref=f2e206]: Email
+                  - definition [ref=f2e207]: bus.austinamakye@gmail.com
+                - generic [ref=f2e208]:
+                  - term [ref=f2e209]: Phone
+                  - definition [ref=f2e210]: 952-353-6097
+                - generic [ref=f2e211]:
+                  - term [ref=f2e212]: Location
+                  - definition [ref=f2e213]: Arlington, TX
+                - generic [ref=f2e214]:
+                  - term [ref=f2e215]: LinkedIn
+                  - definition [ref=f2e216]: linkedin.com/in/austinamakye
+                - generic [ref=f2e217]:
+                  - term [ref=f2e218]: GitHub
+                  - definition [ref=f2e219]: github.com/Skynse
+                - generic [ref=f2e220]:
+                  - term [ref=f2e221]: Degrees
+                  - definition [ref=f2e222]: B.S
+                - generic [ref=f2e223]:
+                  - term [ref=f2e224]: Roles
+                  - definition [ref=f2e225]: Coding Instructor & Full Stack Software Engineer · Language Model Trainer
+                - generic [ref=f2e226]:
+                  - term [ref=f2e227]: Date ranges
+                  - definition [ref=f2e228]: 2022 – May 2026 · May 2023 – Present · May 2024 - Present
+              - generic [ref=f2e229]:
+                - heading "Detected technologies" [level=3] [ref=f2e230]
+                - generic [ref=f2e231]:
+                  - generic [ref=f2e232]: GitHub
+                  - generic [ref=f2e233]: C#
+                  - generic [ref=f2e234]: Observability
+                  - generic [ref=f2e235]: Full-stack
+                  - generic [ref=f2e236]: Software Engineering
+                  - generic [ref=f2e237]: Rust
+                  - generic [ref=f2e238]: Dart
+                  - generic [ref=f2e239]: Flutter
+                  - generic [ref=f2e240]: LLM
+                  - generic [ref=f2e241]: Data Analysis
+                  - generic [ref=f2e242]: GitLab
+                  - generic [ref=f2e243]: C++
+                  - generic [ref=f2e244]: Python
+                  - generic [ref=f2e245]: Java
+                  - generic [ref=f2e246]: TypeScript
+                  - generic [ref=f2e247]: React
+                  - generic [ref=f2e248]: Next.js
+                  - generic [ref=f2e249]: PostgreSQL
+                  - generic [ref=f2e250]: Git
+                  - generic [ref=f2e251]: Docker
+                  - generic [ref=f2e252]: Machine Learning
+                  - generic [ref=f2e253]: TensorFlow
+                  - generic [ref=f2e254]: PyTorch
+                  - generic [ref=f2e255]: Linux
+          - complementary [ref=f2e256]:
+            - heading "It’s about read-ability." [level=3] [ref=f2e259]
+            - paragraph [ref=f2e260]: "A low score usually means a parse issue: an image-based PDF, a layout that hides text, or a missing standard heading — not that you could not do the job."
+            - group [ref=f2e261]:
+              - generic "Extracted document details" [ref=f2e262] [cursor=pointer]
+          - paragraph [ref=f2e263]: This score measures how cleanly an ATS / parser can read your resume. It is not a hiring probability, a measure of ability, or a verdict on bias. The job description is only used to surface relevant keywords; it never affects the score.
+        - generic [ref=f2e96]:
+          - generic [ref=f2e97]: © 2026 FairHire. All rights reserved.
+          - button "About the matching process" [ref=f2e98] [cursor=pointer]
+  - alert [ref=f2e101]

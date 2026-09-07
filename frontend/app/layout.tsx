@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FairHire — Deterministic resume–JD match",
+  title: "FairHire | Understand your resume match",
   description:
-    "Rule-based resume–JD matching with visual connecting lines. The score is computed by fixed rules; an optional LLM infers the matches a curated ontology can't.",
+    "Compare your resume with a job using a stable requirement checklist, verifiable evidence, and clear improvement suggestions.",
 };
 
 export default function RootLayout({

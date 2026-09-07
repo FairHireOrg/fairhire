@@ -1,41 +1,39 @@
 # FairHire
 
-Deterministic **Resume–JD matching** — NER-style parsing, rule-based scoring,
-and a visual map of connecting lines between overlapping terms. The **score** is
-always computed by fixed rules over confirmed matches. An optional DeepSeek layer
-handles the semantic work a curated ontology can't: extracting requirements and
-*turning what a resume didn't spell out into a questionnaire* — e.g. a resume
-with "TypeScript" gets a *suggest* for the "JavaScript" requirement, and you
-confirm it. The LLM only suggests whether something is satisfied; it never sets
-the grade, so the same inputs and answers always yield the same score.
+Deterministic **ATS-parsability** for resumes — NER-style parsing and rule-based
+scoring of how cleanly a machine can read a document: contact block, standard
+section headings, chronological roles, an education entry, keyword-rich skills
+and scannable bullets. The **score is computed only from the resume** with exact
+rules, so identical input always yields an identical score.
+
+The job description is *optional* and is used only as a **relevance vector**: it
+surfaces which of its concepts already appear in the resume (keyword relevance)
+and never affects the score. The optional DeepSeek layer only feeds the
+reviewed "suggest requirements" list; it is never on the scoring path and can
+never decide a match or a grade.
 
 ## Layout
 
-- `frontend/` — Next.js UI. Job description on the left, resume on the right.
-  Toggle "Show connecting lines" to draw an SVG line from every matched JD term
-  to the sentence/word it hits in the resume.
+- `frontend/` — Next.js UI. Paste or upload a resume for an ATS score; add a job
+  description if you also want keyword relevance.
 - `backend/` — FastAPI. Pipeline:
 
   ```
-  parse  (regex + curated ontology)                      -> parse_job_description / parse_resume
-  extract(optional DeepSeek: requirements + evidence)    -> llm_extract.py      [hybrid mode]
-   match (exact / contextual / family) lexical, then     -> matcher.py / hybrid.py
-          LLM-suggested confirm list for the rest        -> llm_extract.py::judge_requirements
-  score  (weighted, explainable dimensions)              -> score.py
+  parse  (regex + curated ontology)                      -> parse_resume / parse_job_description
+  evaluate(ATS parsability, resume-only)                 -> ats.py
+  vector (JD -> keyword relevance, informational)        -> requirements.py + hybrid.py
+  ```
   ```
 
-## Modes
+## Scoring
 
-| Mode | When | Matching |
-| ---- | ---- | -------- |
-| `deterministic` | no `FAIRHIRE_DEEPSEEK_KEY` | lexical only (exact / contains / family) |
-| `hybrid` | DeepSeek key configured | lexical tiers + LLM-suggested questionnaire (you confirm super-sets, synonyms, novel skills) |
+The ATS score is **resume-only and deterministic**. Every dimension is a fixed
+rule over what the parser can extract, so identical input always yields an
+identical score. The job description is optional; if present it only surfaces
+keyword relevance and never affects the score.
 
-The LLM never assigns a score — it only *suggests* whether a requirement is
-satisfied (with a quoted resume span as evidence), and those suggestions become a
-questionnaire. Scoring stays a fixed rule over confirmed matches, so the same
-inputs and answers yield the same grade and candidates are not graded
-arbitrarily.
+The optional DeepSeek layer feeds a reviewed "suggest requirements" list for the
+JD vector; it is never on the scoring path and cannot decide a match or a grade.
 
 ## Setup
 
@@ -67,7 +65,8 @@ python fit_resume.py resume.pdf --jd job.txt --json
 | Sections | `fairhire/fitness/sections.py` | summary / experience / projects / publications / skills / education |
 | Skill tagging | `fairhire/fitness/ontology.py` | ~150 curated terms (languages, frameworks, DBs, cloud, ML) tagged with exact char offsets |
 | LLM extraction | `fairhire/fitness/llm_extract.py` | optional DeepSeek: structured JD requirements + resume evidence |
-| Matching | `fairhire/fitness/matcher.py` + `hybrid.py` | lexical tiers: **exact** → **contextual** → **family** (SQL ⇒ PostgreSQL); then, in hybrid mode, the LLM only *suggests* the leftover requirements (`judge_requirements`) as a confirm list for the user |
+| ATS evaluation | `fairhire/fitness/ats.py` | resume-only, deterministic: contact, sections, chronology, education, keywords, bullets, text extraction |
+| JD vector | `fairhire/fitness/requirements.py` + `hybrid.py` | optional keyword relevance from the job description (informational, never scored) |
 | Scoring | `fairhire/fitness/score.py` | Required (0.55) + nice-to-have (0.10) + structure (0.15) + experience depth (0.20) |
 
 Tests (no pytest needed):
@@ -88,12 +87,11 @@ Optional: `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000`
 
 ## Product note
 
-Scoring and matching are fully deterministic and explainable — every point
-traces back to a concrete rule, and every visual link is a real matched
-requirement with a quality label (`exact`, `contextual`, `family`, `near`).
-Required vs nice-to-have terms are decided by where they appear in the JD
-(requirements/responsibilities zone vs bonus/preferred zone). Not a vendor ATS
-simulator.
+Scoring is fully deterministic and explainable — every point traces back to a
+concrete rule over what the parser extracts. The score measures ATS parsability
+of the resume only; it is not a hiring probability, a measure of ability, or a
+verdict on bias. The job description is used solely for optional keyword
+relevance, never for the score.
 
 The legacy bias-audit modules (`fairhire/stage*`, `fairhire/identity`) are
 kept but are not part of this product path.

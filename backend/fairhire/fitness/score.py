@@ -16,8 +16,7 @@ from typing import Any, Protocol
 from fairhire.fitness.ner import ParsedDoc
 
 _IMPACT_RE = re.compile(
-    r"(\d+\s*%|\d+\s*\+|\d+\s*x\b|\$\s?\d|millions?|thousands?|"
-    r"\b(shipped|built|launched|authored|led|owned|created|published)\b)",
+    r"(\d+\s*%|\d+\s*\+|\d+\s*x\b|\$\s?\d|millions?|thousands?)",
     re.I,
 )
 _ACTION_RE = re.compile(
@@ -26,12 +25,8 @@ _ACTION_RE = re.compile(
     re.I,
 )
 
-DIMENSION_WEIGHTS = {
-    "required_skills": 0.55,
-    "optional_skills": 0.10,
-    "structure": 0.15,
-    "experience_depth": 0.20,
-}
+COMPATIBILITY_WEIGHTS = {"required_skills": 0.85, "optional_skills": 0.15}
+QUALITY_WEIGHTS = {"structure": 0.40, "experience_depth": 0.60}
 
 
 class RequirementRow(Protocol):
@@ -86,9 +81,8 @@ def _requirements_score(
     matched_rows = [r for r in rows if r.matched]
     matched = len(matched_rows)
     total = len(rows)
-    rate = matched / total
     quality_avg = sum(r.score for r in matched_rows) / total if matched_rows else 0.0
-    score = 100.0 * (0.7 * rate + 0.3 * quality_avg)
+    score = 100.0 * quality_avg
     detail = f"{matched}/{total} {label.lower()} found (avg match quality {quality_avg:.2f})."
     return round(score, 1), detail, [r.term for r in matched_rows]
 
@@ -116,7 +110,7 @@ def _structure_score(resume: ParsedDoc) -> tuple[float, str, list[str]]:
     if fields.get("date_ranges"):
         present.append("date ranges")
 
-    total = 8
+    total = 9
     score = min(100.0, 100.0 * len(present) / total)
     detail = f"{len(present)}/{total} parseable structures found: {', '.join(present) or 'none'}."
     return round(score, 1), detail, present
@@ -156,24 +150,31 @@ def _experience_depth_score(resume: ParsedDoc) -> tuple[float, str, list[str]]:
 def compute_score(
     requirements: Sequence[RequirementRow],
     resume: ParsedDoc,
-) -> tuple[float, list[Dimension], list[Blockers]]:
+) -> tuple[float, float, list[Dimension], list[Blockers]]:
     required_rows = [r for r in requirements if r.required]
     optional_rows = [r for r in requirements if not r.required]
 
-    dims: list[Dimension] = []
     req_score, req_detail, req_ev = _requirements_score(required_rows, "required skills")
     opt_score, opt_detail, opt_ev = _requirements_score(optional_rows, "nice-to-have skills")
     struct_score, struct_detail, struct_ev = _structure_score(resume)
     exp_score, exp_detail, exp_ev = _experience_depth_score(resume)
 
     dims = [
-        Dimension("required_skills", "Required skills", req_score, DIMENSION_WEIGHTS["required_skills"], req_detail, req_ev),
-        Dimension("optional_skills", "Nice-to-have skills", opt_score, DIMENSION_WEIGHTS["optional_skills"], opt_detail, opt_ev),
-        Dimension("structure", "Structure", struct_score, DIMENSION_WEIGHTS["structure"], struct_detail, struct_ev),
-        Dimension("experience_depth", "Experience depth", exp_score, DIMENSION_WEIGHTS["experience_depth"], exp_detail, exp_ev),
+        Dimension("required_skills", "Required match", req_score, COMPATIBILITY_WEIGHTS["required_skills"], req_detail, req_ev),
+        Dimension("optional_skills", "Preferred match", opt_score, COMPATIBILITY_WEIGHTS["optional_skills"], opt_detail, opt_ev),
+        Dimension("structure", "Parseable structure", struct_score, QUALITY_WEIGHTS["structure"], struct_detail, struct_ev),
+        Dimension("experience_depth", "Evidence strength", exp_score, QUALITY_WEIGHTS["experience_depth"], exp_detail, exp_ev),
     ]
 
-    overall = sum(d.score * d.weight for d in dims)
+    if required_rows and optional_rows:
+        compatibility = req_score * 0.85 + opt_score * 0.15
+    elif required_rows:
+        compatibility = req_score
+    elif optional_rows:
+        compatibility = opt_score
+    else:
+        compatibility = 0.0
+    resume_quality = struct_score * 0.40 + exp_score * 0.60
 
     blockers: list[Blockers] = []
     missing = [r.term for r in required_rows if not r.matched]
@@ -204,16 +205,6 @@ def compute_score(
                 "Add your email so recruiters can reach you.",
             )
         )
-    if overall < 40:
-        blockers.append(
-            Blockers(
-                "medium",
-                "low_overall",
-                "Overall deterministic score is low for this JD.",
-                "Prioritize the missing required items and add quantified outcomes.",
-            )
-        )
-
     order = {"high": 0, "medium": 1, "low": 2}
     blockers.sort(key=lambda b: order[b.severity])
-    return round(overall, 1), dims, blockers[:6]
+    return round(compatibility, 1), round(resume_quality, 1), dims, blockers[:6]

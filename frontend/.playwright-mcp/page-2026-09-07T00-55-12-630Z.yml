@@ -1,0 +1,69 @@
+- generic [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - complementary [ref=f1e3]:
+      - link [ref=f1e4] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f1e8]: Workspace
+      - link "Resume match" [ref=f1e9] [cursor=pointer]:
+        - /url: "#main"
+      - button "How matching works" [ref=f1e12] [cursor=pointer]
+      - generic [ref=f1e15]:
+        - generic [ref=f1e16]:
+          - heading "Evidence comes first." [level=3] [ref=f1e19]
+          - paragraph [ref=f1e20]: Every verified match links back to your resume.
+        - button "Replay tutorial" [ref=f1e21] [cursor=pointer]
+        - generic [ref=f1e24]: Built for a clearer next step.
+    - generic [ref=f1e25]:
+      - banner [ref=f1e26]:
+        - generic [ref=f1e27]:
+          - generic [ref=f1e28]: Workspace
+          - generic [ref=f1e29]: /
+          - strong [ref=f1e30]: Resume match
+        - button "Replay tutorial" [ref=f1e31] [cursor=pointer]
+      - main [ref=f1e34]:
+        - generic [ref=f1e36]:
+          - paragraph [ref=f1e37]: A little clarity before you apply
+          - heading "See how your experience fits." [level=1] [ref=f1e38]
+          - paragraph [ref=f1e39]: Compare your resume with a role. Understand the evidence, the gaps, and what to improve.
+        - generic [ref=f1e43]:
+          - generic [ref=f1e44]:
+            - generic [ref=f1e45]:
+              - generic [ref=f1e46]:
+                - generic [ref=f1e47]:
+                  - generic [ref=f1e48]: "1"
+                  - generic [ref=f1e49]: Job description
+                - button "Try an example" [active] [ref=f1e50] [cursor=pointer]
+              - paragraph [ref=f1e53]: The complete role gives you a more useful comparison.
+              - textbox "Job description" [ref=f1e54]:
+                - /placeholder: "Paste the job description here...\n\nInclude responsibilities, required skills, and preferred qualifications."
+                - text: Backend Engineer Requirements - Proficiency in Python and SQL. - Experience with REST APIs and Docker. - Strong communication skills. Preferred - Experience with Kubernetes. - Familiarity with Kafka. Benefits Flexible working hours and paid leave.
+              - generic [ref=f1e55]:
+                - generic [ref=f1e56]: Requirements and responsibilities
+                - generic [ref=f1e57]: 247 / 30,000
+            - generic [ref=f1e58]:
+              - generic [ref=f1e59]:
+                - generic [ref=f1e60]:
+                  - generic [ref=f1e61]: "2"
+                  - heading "Your resume" [level=2] [ref=f1e62]
+                - group "Resume input mode" [ref=f1e63]:
+                  - button "Upload file" [ref=f1e64] [cursor=pointer]
+                  - button "Paste text" [pressed] [ref=f1e65] [cursor=pointer]
+              - paragraph [ref=f1e66]: Use the version you plan to send with your application.
+              - textbox "Resume text" [ref=f1e101]:
+                - /placeholder: "Paste your resume here...\n\nInclude your experience, skills, projects, and education."
+                - text: Morgan Rivera morgan.rivera@example.com Summary Backend engineer building reliable services for small businesses. Skills Python, PostgreSQL, REST APIs, Docker, Git Experience Backend Engineer | Harbor Software | 2022 - 2026 - Built Python services that reduced processing time by 32%. - Designed REST APIs for a customer reporting platform. - Documented API integrations for engineering and customer support teams. - Deployed Docker containers with automated health checks. Education Bachelor's degree in Computer Science River Valley University | 2018 - 2022
+              - generic [ref=f1e77]:
+                - generic [ref=f1e78]: Only pasted text will be analyzed
+                - generic [ref=f1e79]: 563 characters
+          - generic [ref=f1e80]:
+            - paragraph [ref=f1e81]: Document contents are not saved in your browser.
+            - button "Analyze match" [ref=f1e84] [cursor=pointer]
+        - generic [ref=f1e87]:
+          - generic [ref=f1e91]:
+            - heading "Your next application, with more context." [level=2] [ref=f1e92]
+            - paragraph [ref=f1e93]: Add both documents to see requirement coverage, evidence you can inspect, and practical resume suggestions.
+          - generic [ref=f1e94]: No score without evidence.
+        - generic [ref=f1e95]:
+          - generic [ref=f1e96]: © 2026 FairHire. All rights reserved.
+          - button "About the matching process" [ref=f1e97] [cursor=pointer]
+  - alert [ref=f1e100]

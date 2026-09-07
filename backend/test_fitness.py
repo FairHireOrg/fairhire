@@ -91,6 +91,13 @@ def test_offsets_consistent() -> None:
             f"span slice matches variant ({occ.canonical})",
             text[occ.start : occ.end] == occ.text,
         )
+    check("sentence slices are exact", all(text[s.start:s.end] == s.text for s in sentences))
+
+    indented = "Header\n   - Built REST APIs with Python.\n  A second sentence. Another one."
+    check(
+        "indented sentence slices are exact",
+        all(indented[s.start:s.end] == s.text for s in segment_sentences(indented)),
+    )
 
 
 def test_matching_tiers() -> None:
@@ -135,82 +142,44 @@ def test_no_false_positive_matches() -> None:
     check("no fuzzy near-match links", all("deveops" != lnk.canonical.lower() for lnk in m3.links))
 
 
-def test_hybrid_min_shared() -> None:
-    import fairhire.fitness.llm_extract as le
-    from fairhire.config import Config
-    from fairhire.fitness.llm_extract import Requirement, ResumeEvidence
+def test_soft_ability_quarantine() -> None:
+    """Soft/ability requirements only match on strong, curated evidence.
+
+    A loose token overlap (e.g. "team") must not auto-verify an ability
+    requirement in the keyword-relevance view; without curated evidence it is
+    surfaced as unmatched.
+    """
     from fairhire.fitness.rubric import score_resume
 
-    reqs = [Requirement("Collaborate with the engineering team", "ability", True)]
-    le.extract_requirements = lambda *a, **k: reqs
-    le.extract_resume_evidence = lambda *a, **k: ResumeEvidence()
-    le.judge_requirements = lambda *a, **k: []
-    cfg = Config(deepseek_api_key="dummy")
-    d = score_resume(RESUME, JD, config=cfg).to_dict()
-    row = next((t for t in d["required_terms"] if t["term"] == "Collaborate with the engineering team"), None)
-    check("ability needs >=2 shared stems (no single-word match)", row is not None and not row["matched"])
-
-
-def test_llm_semantic_judge() -> None:
-    import fairhire.fitness.llm_extract as le
-    from fairhire.config import Config
-    from fairhire.fitness.llm_extract import Requirement, ResumeEvidence, SemanticJudgment
-    from fairhire.fitness.rubric import score_resume
-
-    resume_txt = (
-        "Alex Morgan\n\nSKILLS\nTypeScript, Node.js\n\n"
-        "EXPERIENCE\n- Built a typed web app entirely in TypeScript."
-    )
-    jd_txt = "Senior Full Stack Engineer\nRequirements\n- Experience with JavaScript"
-
-    reqs = [Requirement("Experience with JavaScript", "skill", True)]
-    le.extract_requirements = lambda *a, **k: reqs
-    le.extract_resume_evidence = lambda *a, **k: ResumeEvidence(skills=["TypeScript"])
-    le.judge_requirements = lambda texts, rtext, cfg=None, max_items=24: [
-        SemanticJudgment(
-            "Experience with JavaScript", True,
-            evidence="TypeScript",
-            relation="TypeScript is a superset of JavaScript",
-        )
-    ]
-
-    cfg = Config(deepseek_api_key="dummy")
-
-    # Initial analyze (no confirmations): the LLM only *suggests*; it does NOT
-    # auto-match, so the score stays based on lexical matches only (deterministic).
-    d = score_resume(resume_txt, jd_txt, config=cfg).to_dict()
-    row = next((t for t in d["required_terms"] if t["term"] == "Experience with JavaScript"), None)
-    check("suggestion is not auto-matched", row is not None and not row["matched"])
-    check("suggestion carries a hint", row is not None and "TypeScript" in (row.get("hint") or ""))
-    check("confirm item surfaced", any(c["term"] == "Experience with JavaScript" for c in d["confirm_items"]))
-    check("no inferred score without confirmation", all(lnk["quality"] != "inferred" for lnk in d["links"]))
-
-    # Explicit user confirmation flips it to matched -> deterministic.
-    d2 = score_resume(resume_txt, jd_txt, config=cfg, confirmations={"experience with javascript": True}).to_dict()
-    row2 = next((t for t in d2["required_terms"] if t["term"] == "Experience with JavaScript"), None)
-    check("user confirmation matches JS", row2 is not None and row2["matched"] and row2["quality"] == "inferred")
-    link = next((lnk for lnk in d2["links"] if lnk["canonical"] == "Experience with JavaScript"), None)
-    check("confirmed link anchored to TS evidence", link is not None and "TypeScript" in link["resume_term"])
-    check("confirmed link anchor is valid resume sentence",
-          link is not None and 0 <= link["resume_sentence_index"] < len(d2["resume_sentences"]))
-
-    # Declined -> stays missing (no fabricated link).
-    d3 = score_resume(resume_txt, jd_txt, config=cfg, confirmations={"experience with javascript": False}).to_dict()
-    row3 = next((t for t in d3["required_terms"] if t["term"] == "Experience with JavaScript"), None)
-    check("declined stays missing", row3 is not None and not row3["matched"])
-    check("no inferred links when declined", all(lnk["quality"] != "inferred" for lnk in d3["links"]))
+    jd_text = "Engineer\nRequirements\n- Strong collaboration with the engineering team"
+    d = score_resume(RESUME, jd_text).to_dict()
+    soft = [t for t in d["keyword_groups"] if t["kind"] == "soft"]
+    check("soft requirement surfaced", len(soft) >= 1)
+    check("soft ability not auto-matched without curated evidence",
+          all(not t["matched"] for t in soft))
 
 
 def test_determinism() -> None:
     a = analyze_fitness(job_description=JD, resume_text=RESUME)
     b = analyze_fitness(job_description=JD, resume_text=RESUME)
-    check("identical score", a["overall_score"] == b["overall_score"])
-    check("identical links", json.dumps(a["links"]) == json.dumps(b["links"]))
-    check("links reference valid sentences", all(
-        0 <= lnk["jd_sentence_index"] < len(a["jd_sentences"])
-        and 0 <= lnk["resume_sentence_index"] < len(a["resume_sentences"])
-        for lnk in a["links"]
-    ))
+    check("identical ats score", a["ats_score"] == b["ats_score"])
+    check("identical ats grade", a["ats_grade"] == b["ats_grade"])
+    check("identical dimensions", json.dumps(a["dimensions"]) == json.dumps(b["dimensions"]))
+    check("identical recommendations", json.dumps(a["recommendations"]) == json.dumps(b["recommendations"]))
+    check("identical keyword coverage", a["keyword_coverage"] == b["keyword_coverage"])
+    check("identical keyword groups", json.dumps(a["keyword_groups"]) == json.dumps(b["keyword_groups"]))
+    check("ats score is a finite percentage", isinstance(a["ats_score"], (int, float)) and 0 <= a["ats_score"] <= 100)
+
+
+def test_ats_resume_only_and_deterministic() -> None:
+    """The ATS score is resume-only: a different JD must not change it."""
+    from fairhire.fitness.rubric import score_resume
+
+    d1 = score_resume(RESUME, JD).to_dict()
+    d2 = score_resume(RESUME, "Completely different role. Requirements- Java and microservices.").to_dict()
+    check("ats score ignores the job description", d1["ats_score"] == d2["ats_score"])
+    check("ats grade present", isinstance(d1["ats_grade"], str) and d1["ats_grade"])
+    check("actions are actionable", all(bool(r["severity"] in {"high", "medium", "low"} and r["action"]) for r in d1["recommendations"]))
 
 
 def test_features() -> None:
@@ -227,53 +196,38 @@ def test_deterministic_fallback_without_llm() -> None:
     # FAIRHIRE_DEEPSEEK_KEY present in the environment or backend/.env.
     cfg = Config(deepseek_api_key="")
     result = analyze_fitness(job_description=JD, resume_text=RESUME, config=cfg)
-    check("deterministic mode when no key", result["extraction_mode"] == "deterministic")
-    check("deterministic still links SQL->PostgreSQL",
-          any(lnk["canonical"] == "SQL" and lnk["quality"] == "family" for lnk in result["links"]))
+    check("deterministic mode when no key", result["extraction_status"] == "deterministic_only")
+    check("vector still surfaces SQL->PostgreSQL relevance",
+          any(g["term"] == "SQL" and g["matched"] and g["resume_term"] == "PostgreSQL"
+              for g in result["keyword_groups"]))
 
 
-def test_hybrid_mode_with_mocked_llm() -> None:
-    import fairhire.fitness.llm_extract as le
-    from fairhire.fitness.llm_extract import Requirement, ResumeEvidence
-    from fairhire.fitness.rubric import score_resume
+def test_deterministic_checklist_path() -> None:
+    """The deterministic rule-based checklist drives the keyword relevance view.
+
+    Scoring is fully resume-only; the (optional) AI suggestion endpoint is a
+    separate review step and is never on the scoring path.
+    """
     from fairhire.config import Config
+    from fairhire.fitness.rubric import score_resume
 
-    requirements = [
-        Requirement("Bachelor's degree in Computer Science", "degree", True),
-        Requirement("Strong analytical and problem-solving skills", "soft", True),
-        Requirement("Develop, test, and maintain software applications", "ability", True),
-        Requirement("Experience with message queues (Kafka)", "skill", True),
-        Requirement("Familiarity with healthcare software", "soft", False),
-    ]
-    evidence = ResumeEvidence(
-        degree="B.S. Computer Science",
-        skills=["Python", "PostgreSQL", "Kafka", "Rust"],
-        soft_skills=["problem solving", "teaching"],
-        strengths=["Built distributed services in Python", "Integrated Kafka for streaming"],
-        total_years=4,
-    )
-    le.extract_requirements = lambda *a, **k: requirements
-    le.extract_resume_evidence = lambda *a, **k: evidence
-    le.judge_requirements = lambda *a, **k: []
-
+    checklist_jd = """Backend Engineer
+Requirements
+- Bachelor's degree in Computer Science
+- Strong analytical and problem-solving skills
+- Experience with message queues (Kafka)
+Nice to have
+- Familiarity with healthcare software
+"""
     cfg = Config(deepseek_api_key="dummy")
-    report = score_resume(RESUME, JD, config=cfg)
-    d = report.to_dict()
-    check("hybrid mode active", d["extraction_mode"] == "hybrid")
-    check("hybrid degree matched", any(
-        t["matched"] and t["kind"] == "degree" for t in d["required_terms"]))
-    check("soft/ability not auto-matched (surfaced as questions)", any(
-        not t["matched"] and t["kind"] in {"soft", "ability"} for t in d["required_terms"]))
-    check("confirm items include soft/ability", any(
-        c["kind"] in {"soft", "ability"} for c in d["confirm_items"]))
-    check("hybrid skill (Kafka) matched", any(
-        t["matched"] and t["kind"] == "skill" and "Kafka" in t["term"] for t in d["required_terms"]))
-    check("hybrid missing surfaced", any(
-        not t["matched"] for t in d["required_terms"]))
-    check("hybrid links have jd sentence anchors", all(
-        0 <= lnk["jd_sentence_index"] < len(d["jd_sentences"]) for lnk in d["links"]))
-    check("hybrid links have resume sentence anchors", all(
-        0 <= lnk["resume_sentence_index"] < len(d["resume_sentences"]) for lnk in d["links"]))
+    d = score_resume(RESUME, checklist_jd, config=cfg).to_dict()
+    check("deterministic extraction status", d["extraction_status"] == "deterministic_only")
+    check("degree keyword matched", any(
+        g["matched"] and g["kind"] == "degree" for g in d["keyword_groups"]))
+    check("Kafka keyword matched", any(
+        g["matched"] and "Kafka" in g["term"] for g in d["keyword_groups"]))
+    check("soft surfaced but not auto-verified", any(
+        not g["matched"] and g["kind"] == "soft" for g in d["keyword_groups"]))
 
 
 if __name__ == "__main__":
@@ -288,15 +242,15 @@ if __name__ == "__main__":
     print("False-positive guards")
     test_no_false_positive_matches()
     print("Hybrid min-shared guard")
-    test_hybrid_min_shared()
-    print("Inferred superset")
-    test_llm_semantic_judge()
+    test_soft_ability_quarantine()
     print("Determinism")
     test_determinism()
     print("Feature extraction")
     test_features()
+    print("ATS resume-only")
+    test_ats_resume_only_and_deterministic()
     print("Deterministic fallback (no LLM)")
     test_deterministic_fallback_without_llm()
-    print("Hybrid mode (mocked DeepSeek)")
-    test_hybrid_mode_with_mocked_llm()
+    print("Deterministic checklist path")
+    test_deterministic_checklist_path()
     print("\nAll tests passed.")

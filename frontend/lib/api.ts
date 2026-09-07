@@ -1,154 +1,50 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-
-export type DimensionScore = {
-  key: string;
-  label: string;
-  score: number;
-  weight: number;
-  detail: string;
-  evidence: string[];
-};
-
-export type Blocker = {
-  severity: "high" | "medium" | "low";
-  code: string;
-  message: string;
-  suggestion: string;
-};
-
-export type MatchLink = {
-  canonical: string;
-  jd_term: string;
-  resume_term: string;
-  category: string;
-  required: boolean;
-  quality: "exact" | "contains" | "family" | "inferred" | "fuzzy";
-  score: number;
-  jd_sentence_index: number;
-  jd_sentence_text: string;
-  jd_start: number;
-  jd_end: number;
-  resume_sentence_index: number;
-  resume_sentence_text: string;
-  resume_start: number;
-  resume_end: number;
-};
-
-export type Sentence = {
-  index: number;
-  text: string;
-  start: number;
-  end: number;
-};
-
-export type TermRow = {
-  term: string;
-  kind: string;
-  category?: string;
-  label?: string;
-  required: boolean;
-  matched: boolean;
-  quality: "exact" | "contains" | "family" | "inferred" | "fuzzy" | null;
-  score: number | null;
-  resume_term: string | null;
-  suggested?: boolean | null;
-  hint?: string;
-};
-
-export type ConfirmItem = {
-  term: string;
-  kind: string;
-  required: boolean;
-  suggested: boolean | null;
-  hint: string;
-};
+export type Quality = "exact" | "contextual" | "family";
+export type Requirement = { id: string; text: string; kind: string; required: boolean; source_text: string; jd_start: number; jd_end: number };
+export type KeywordGroup = { term: string; kind: string; required: boolean; matched: boolean; resume_term: string | null };
+export type AtsDimension = { key: string; label: string; score: number; weight: number; detail: string; evidence: string[] };
+export type AtsRecommendation = { severity: "high" | "medium" | "low"; code: string; title: string; detail: string; action: string };
 
 export type FitnessResult = {
-  overall_score: number;
-  extraction_mode: string;
+  ats_score: number;
+  ats_grade: string;
+  extraction_status: string;
   job_title: string | null;
-  dimensions: DimensionScore[];
-  blockers: Blocker[];
-  links: MatchLink[];
-  required_terms: TermRow[];
-  optional_terms: TermRow[];
-  confirm_items: ConfirmItem[];
-  missing_required: string[];
-  missing_optional: string[];
-  jd_sentences: Sentence[];
-  resume_sentences: Sentence[];
+  dimensions: AtsDimension[];
+  recommendations: AtsRecommendation[];
+  keyword_coverage: { matched: number; total: number };
+  keyword_groups: KeywordGroup[];
   resume_fields: Record<string, string | string[]>;
-  resume_titles: string[];
   sections_found: Record<string, boolean>;
-  resume_char_count: number;
-  jd_features: {
-    role_title?: string | null;
-    role_summary?: string;
-    required_terms?: TermRow[];
-    optional_terms?: TermRow[];
-  } | null;
-  resume_features: {
-    email?: string | null;
-    phone?: string | null;
-    location?: string | null;
-    linkedin?: string | null;
-    github?: string | null;
-    degrees?: string[];
-    titles?: string[];
-    skills?: string[];
-  } | null;
-  disclaimer: string;
+  skills: string[];
   resume_text: string;
+  job_description: string;
+  checklist_id: string;
+  ruleset_version: string;
+  ai_available: boolean;
+  disclaimer: string;
+  scorable: boolean;
 };
 
-async function readError(res: Response): Promise<string> {
-  try {
-    const data = await res.json();
-    return typeof data.detail === "string"
-      ? data.detail
-      : JSON.stringify(data.detail ?? data.message ?? res.statusText);
-  } catch {
-    return res.statusText || "Request failed";
+async function request<T>(path: string, init: RequestInit): Promise<T> {
+  let response: Response;
+  try { response = await fetch(API_BASE + path, { ...init, signal: AbortSignal.timeout(65000) }); }
+  catch { throw new Error("Could not reach the analysis service. Check that the backend is running and try again."); }
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(typeof error?.detail === "string" ? error.detail : "The service could not complete this request. Please try again.");
   }
+  return response.json();
 }
-
-export async function analyzeFitness(params: {
-  jobDescription: string;
-  file?: File | null;
-  resumeText?: string;
-  confirmations?: Record<string, boolean>;
-}): Promise<FitnessResult> {
+export async function analyzeFitness(params: { jobDescription: string; file?: File | null; resumeText?: string }): Promise<FitnessResult> {
   const form = new FormData();
   form.append("job_description", params.jobDescription);
-  if (params.file) {
-    form.append("resume", params.file);
-  } else if (params.resumeText) {
-    form.append("resume_text", params.resumeText);
-  } else {
-    throw new Error("Provide a resume file or pasted text");
-  }
-  if (params.confirmations && Object.keys(params.confirmations).length > 0) {
-    form.append("confirmations", JSON.stringify(params.confirmations));
-  }
-
-  const res = await fetch(`${API_BASE}/api/analyze`, {
-    method: "POST",
-    body: form,
-  });
-  if (!res.ok) {
-    throw new Error(await readError(res));
-  }
-  return res.json();
+  if (params.file) form.append("resume", params.file);
+  else form.append("resume_text", params.resumeText ?? "");
+  return request("/api/analyze", { method: "POST", body: form });
 }
-
-export async function checkHealth(): Promise<{
-  status: string;
-  mode: string;
-  product: string;
-}> {
-  const res = await fetch(`${API_BASE}/health`);
-  if (!res.ok) {
-    throw new Error(await readError(res));
-  }
-  return res.json();
+export function suggestRequirements(jobDescription: string) {
+  return request<{ status: string; suggestions: Requirement[] }>("/api/requirements/suggest", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ job_description: jobDescription }),
+  });
 }

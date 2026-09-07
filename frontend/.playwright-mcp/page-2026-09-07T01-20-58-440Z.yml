@@ -1,0 +1,73 @@
+- generic [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - complementary [ref=f1e3]:
+      - link [ref=f1e4] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f1e8]: Workspace
+      - link "Resume checker" [ref=f1e9] [cursor=pointer]:
+        - /url: "#main"
+      - button "How it works" [ref=f1e12] [cursor=pointer]
+      - generic [ref=f1e15]:
+        - generic [ref=f1e16]:
+          - heading "Parsability first." [level=3] [ref=f1e19]
+          - paragraph [ref=f1e20]: We score how a reading system extracts your resume.
+        - button "Replay tutorial" [ref=f1e21] [cursor=pointer]
+        - generic [ref=f1e24]: Built for a clearer next step.
+    - generic [ref=f1e25]:
+      - banner [ref=f1e26]:
+        - generic [ref=f1e27]:
+          - generic [ref=f1e28]: Workspace
+          - generic [ref=f1e29]: /
+          - strong [ref=f1e30]: Resume checker
+        - button "Replay tutorial" [ref=f1e31] [cursor=pointer]
+      - main [ref=f1e34]:
+        - generic [ref=f1e36]:
+          - paragraph [ref=f1e37]: Pass the automated screen
+          - heading "How cleanly a system reads your resume." [level=1] [ref=f1e38]
+          - paragraph [ref=f1e39]: An ATS-parsability score from exactly what a parser can extract. Add the job description if you also want keyword relevance.
+        - generic [ref=f1e43]:
+          - generic [ref=f1e44]:
+            - generic [ref=f1e45]:
+              - generic [ref=f1e46]:
+                - generic [ref=f1e47]:
+                  - generic [ref=f1e48]: "1"
+                  - generic [ref=f1e49]:
+                    - text: Job description
+                    - emphasis [ref=f1e50]: optional
+                - button "Try an example" [ref=f1e51] [cursor=pointer]
+              - paragraph [ref=f1e54]: Used only to check keyword relevance — it never changes your score.
+              - textbox "Job description optional" [ref=f1e55]:
+                - /placeholder: "Paste the job description here (optional)...\n\nInclude responsibilities, required skills, and preferred qualifications."
+                - text: "Software & Design Engineer LaunchAI.work Company: LaunchAI.work Location: San Francisco (CA), Salt Lake City (UT), Remote or hybrid acceptable Type: Full-time Compensation: $120K - $150K /year + Stock Options LaunchAI is building the world's first vision-based ADK (Agent Development Kit). We are seeking an exceptional new graduate to help build the platform end to end. You will work on multimodal AI models, visual grounding, workflow engines, deterministic execution, and the tools users rely on to build, run, and supervise agents. What you'll do - Build tools for computer-screen-using AI Agents. - Improve our vision-first workflow builder and reliable execution engine. - Develop across our Python runtime, FastAPI backend, and React/TypeScript portal. - Turn frontier-model prototypes into tested production systems. - Work directly with the founding team and customers. What we're looking for - Recent or upcoming BS, MS, or PhD in computer science or a related field. - Strong programming and computer-science fundamentals. - Experience with Python, TypeScript, or another modern language. - Evidence of ambitious technical work through research, internships, open source, startups, or personal projects. - Curiosity, ownership, and excitement about making probabilistic AI systems reliable. Experience with computer vision, multimodal models, agents, compilers, distributed systems, HCI, or full-stack development is helpful but not required. Apply Submit your resume or LinkedIn profile. Additionally, in 2-3 sentences tell us whether you believe whether the current LLMs or any neural network based models can be classified as intelligent. LaunchAI is an equal opportunity employer."
+              - generic [ref=f1e56]:
+                - generic [ref=f1e57]: Keyword relevance only
+                - generic [ref=f1e58]: 1,704 / 30,000
+            - generic [ref=f1e59]:
+              - generic [ref=f1e60]:
+                - generic [ref=f1e61]:
+                  - generic [ref=f1e62]: "2"
+                  - heading "Your resume" [level=2] [ref=f1e63]
+                - group "Resume input mode" [ref=f1e64]:
+                  - button "Upload file" [pressed] [ref=f1e65] [cursor=pointer]
+                  - button "Paste text" [ref=f1e66] [cursor=pointer]
+              - paragraph [ref=f1e67]: Use the version you plan to send with your application.
+              - generic [ref=f1e68]:
+                - button "Upload resume" [ref=f1e69]
+                - heading "AustinResume.pdf" [level=3] [ref=f1e104]
+                - paragraph [ref=f1e74]: 97 KB · Ready to analyze
+                - button "Choose a different file" [active] [ref=f1e105] [cursor=pointer]
+              - generic [ref=f1e78]:
+                - generic [ref=f1e79]: Text-based PDFs work best
+                - generic [ref=f1e80]: 10 MB max
+          - generic [ref=f1e81]:
+            - paragraph [ref=f1e82]: Document contents are not saved in your browser.
+            - button "Check parsability" [ref=f1e85] [cursor=pointer]
+        - generic [ref=f1e88]:
+          - generic [ref=f1e92]:
+            - heading "Your resume, as a machine reads it." [level=2] [ref=f1e93]
+            - paragraph [ref=f1e94]: Add your resume to get a parsability score, a breakdown of what was extracted, and steps to make it ATS-clean.
+          - generic [ref=f1e95]: No score without evidence.
+        - generic [ref=f1e96]:
+          - generic [ref=f1e97]: © 2026 FairHire. All rights reserved.
+          - button "About the matching process" [ref=f1e98] [cursor=pointer]
+  - alert [ref=f1e101]

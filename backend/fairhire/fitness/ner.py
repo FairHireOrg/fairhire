@@ -29,7 +29,7 @@ URL_RE = re.compile(
     r"https?://[\w\-.]+(?:\.[\w\-.]+)+[\w\-./?%=&]*|www\.[\w\-.]+(?:\.[\w\-.]+)+[\w\-./?%=&]*)"
 )
 DATE_RANGE_RE = re.compile(
-    rf"\b(?:{MONTHS}\s+)?(?:19|20)\d{{2}}\s*[-–—to]\s*"
+    rf"\b(?:{MONTHS}\s+)?(?:19|20)\d{{2}}\s*(?:[-–—]|to)\s*"
     rf"(?:(?:{MONTHS}\s+)?(?:19|20)\d{{2}}|Present|Current|Now)\b",
     re.I,
 )
@@ -41,7 +41,7 @@ DEGREE_RE = re.compile(
     re.I,
 )
 
-_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])(?<!\b[A-Z]\.)(?<!\b[A-Z]\.[A-Z]\.)\s+")
 _BULLET_LEAD = re.compile(r"^\s*(?:[-*•·▪◦‣]|\d+[.)])\s*")
 
 # JD zone markers ------------------------------------------------------------
@@ -349,7 +349,7 @@ def _ordered_unique(terms: set[str], occurrences: list[TermOccurrence]) -> list[
 
 
 def parse_job_description(jd_text: str) -> ParsedDoc:
-    text = jd_text.strip()
+    text = jd_text
     sentences = segment_sentences(text)
     occurrences = find_occurrences(text, sentences)
     required, optional = classify_jd_terms(text, occurrences)
@@ -369,7 +369,7 @@ def parse_job_description(jd_text: str) -> ParsedDoc:
 
 
 def parse_resume(resume_text: str) -> ParsedDoc:
-    text = resume_text.strip()
+    text = resume_text
     sentences = segment_sentences(text)
     occurrences = find_occurrences(text, sentences)
     sections = parse_sections(text)
@@ -461,7 +461,7 @@ def _extract_role_titles(resume_text: str) -> list[str]:
 
 
 def normalize_for_match(text: str) -> str:
-    """Light normalization used by the fuzzy matcher (not for spans)."""
+    """Light normalization for labels only, never for source spans."""
     return re.sub(r"\s+", " ", text.lower()).strip()
 
 
