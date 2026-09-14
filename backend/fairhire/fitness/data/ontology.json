@@ -1,0 +1,1397 @@
+{
+  "category_labels": {
+    "language": "Language",
+    "framework": "Framework / library",
+    "frontend": "Frontend",
+    "backend": "Backend",
+    "mobile": "Mobile",
+    "database": "Database",
+    "cloud": "Cloud",
+    "devops": "DevOps / tooling",
+    "data": "Data",
+    "ml": "ML / AI",
+    "methodology": "Method / practice",
+    "domain": "Domain",
+    "tool": "Tool"
+  },
+  "terms": [
+    {
+      "canonical": "Python",
+      "category": "language",
+      "variants": [
+        "Python",
+        "py"
+      ]
+    },
+    {
+      "canonical": "JavaScript",
+      "category": "language",
+      "variants": [
+        "JavaScript",
+        "Javascript",
+        "JS",
+        "ES6",
+        "ES2015"
+      ]
+    },
+    {
+      "canonical": "TypeScript",
+      "category": "language",
+      "variants": [
+        "TypeScript",
+        "Typescript",
+        "TS"
+      ]
+    },
+    {
+      "canonical": "Java",
+      "category": "language",
+      "variants": [
+        "Java"
+      ]
+    },
+    {
+      "canonical": "C++",
+      "category": "language",
+      "variants": [
+        "C++",
+        "C plus plus",
+        "CPP"
+      ]
+    },
+    {
+      "canonical": "C#",
+      "category": "language",
+      "variants": [
+        "C#",
+        "Csharp"
+      ]
+    },
+    {
+      "canonical": "Golang",
+      "category": "language",
+      "variants": [
+        "Golang",
+        "GoLang",
+        "Go language"
+      ]
+    },
+    {
+      "canonical": "Rust",
+      "category": "language",
+      "variants": [
+        "Rust"
+      ]
+    },
+    {
+      "canonical": "Ruby",
+      "category": "language",
+      "variants": [
+        "Ruby"
+      ]
+    },
+    {
+      "canonical": "Swift",
+      "category": "language",
+      "variants": [
+        "Swift"
+      ]
+    },
+    {
+      "canonical": "Kotlin",
+      "category": "language",
+      "variants": [
+        "Kotlin"
+      ]
+    },
+    {
+      "canonical": "PHP",
+      "category": "language",
+      "variants": [
+        "PHP"
+      ]
+    },
+    {
+      "canonical": "Scala",
+      "category": "language",
+      "variants": [
+        "Scala"
+      ]
+    },
+    {
+      "canonical": "SQL",
+      "category": "language",
+      "variants": [
+        "SQL"
+      ]
+    },
+    {
+      "canonical": "HTML",
+      "category": "language",
+      "variants": [
+        "HTML",
+        "HTML5"
+      ]
+    },
+    {
+      "canonical": "CSS",
+      "category": "language",
+      "variants": [
+        "CSS",
+        "CSS3"
+      ]
+    },
+    {
+      "canonical": "Bash",
+      "category": "language",
+      "variants": [
+        "Bash",
+        "Bash scripting"
+      ]
+    },
+    {
+      "canonical": "Perl",
+      "category": "language",
+      "variants": [
+        "Perl"
+      ]
+    },
+    {
+      "canonical": "MATLAB",
+      "category": "language",
+      "variants": [
+        "MATLAB",
+        "Matlab"
+      ]
+    },
+    {
+      "canonical": "Dart",
+      "category": "language",
+      "variants": [
+        "Dart"
+      ]
+    },
+    {
+      "canonical": "Groovy",
+      "category": "language",
+      "variants": [
+        "Groovy"
+      ]
+    },
+    {
+      "canonical": "Elixir",
+      "category": "language",
+      "variants": [
+        "Elixir"
+      ]
+    },
+    {
+      "canonical": "Clojure",
+      "category": "language",
+      "variants": [
+        "Clojure"
+      ]
+    },
+    {
+      "canonical": "Haskell",
+      "category": "language",
+      "variants": [
+        "Haskell"
+      ]
+    },
+    {
+      "canonical": "Lua",
+      "category": "language",
+      "variants": [
+        "Lua"
+      ]
+    },
+    {
+      "canonical": "Objective-C",
+      "category": "language",
+      "variants": [
+        "Objective-C",
+        "Objective C",
+        "ObjectiveC"
+      ]
+    },
+    {
+      "canonical": "Julia",
+      "category": "language",
+      "variants": [
+        "Julia"
+      ]
+    },
+    {
+      "canonical": "PowerShell",
+      "category": "language",
+      "variants": [
+        "PowerShell",
+        "Powershell"
+      ]
+    },
+    {
+      "canonical": "R",
+      "category": "language",
+      "variants": [
+        "R statistical",
+        "R programming",
+        "R language"
+      ]
+    },
+    {
+      "canonical": "React",
+      "category": "framework",
+      "variants": [
+        "React",
+        "React.js",
+        "Reactjs"
+      ]
+    },
+    {
+      "canonical": "React Native",
+      "category": "frontend",
+      "variants": [
+        "React Native",
+        "ReactNative"
+      ]
+    },
+    {
+      "canonical": "Angular",
+      "category": "framework",
+      "variants": [
+        "Angular",
+        "AngularJS",
+        "Angular.js"
+      ]
+    },
+    {
+      "canonical": "Vue",
+      "category": "framework",
+      "variants": [
+        "Vue",
+        "Vue.js",
+        "Vuejs"
+      ]
+    },
+    {
+      "canonical": "Svelte",
+      "category": "framework",
+      "variants": [
+        "Svelte"
+      ]
+    },
+    {
+      "canonical": "Next.js",
+      "category": "framework",
+      "variants": [
+        "Next.js",
+        "Nextjs"
+      ]
+    },
+    {
+      "canonical": "Nuxt",
+      "category": "framework",
+      "variants": [
+        "Nuxt",
+        "Nuxt.js"
+      ]
+    },
+    {
+      "canonical": "Node.js",
+      "category": "backend",
+      "variants": [
+        "Node.js",
+        "Nodejs"
+      ]
+    },
+    {
+      "canonical": "Express",
+      "category": "backend",
+      "variants": [
+        "Express",
+        "Express.js",
+        "ExpressJS"
+      ]
+    },
+    {
+      "canonical": "Django",
+      "category": "backend",
+      "variants": [
+        "Django"
+      ]
+    },
+    {
+      "canonical": "Flask",
+      "category": "backend",
+      "variants": [
+        "Flask"
+      ]
+    },
+    {
+      "canonical": "FastAPI",
+      "category": "backend",
+      "variants": [
+        "FastAPI",
+        "Fast Api"
+      ]
+    },
+    {
+      "canonical": "Rails",
+      "category": "backend",
+      "variants": [
+        "Ruby on Rails",
+        "Rails"
+      ]
+    },
+    {
+      "canonical": "Spring Boot",
+      "category": "backend",
+      "variants": [
+        "Spring Boot",
+        "SpringBoot"
+      ]
+    },
+    {
+      "canonical": "Spring",
+      "category": "backend",
+      "variants": [
+        "Spring",
+        "Spring Framework"
+      ]
+    },
+    {
+      "canonical": "ASP.NET",
+      "category": "backend",
+      "variants": [
+        "ASP.NET",
+        "ASP Net",
+        "AspNet"
+      ]
+    },
+    {
+      "canonical": ".NET",
+      "category": "backend",
+      "variants": [
+        ".NET",
+        ".Net",
+        "Dotnet"
+      ]
+    },
+    {
+      "canonical": "Laravel",
+      "category": "backend",
+      "variants": [
+        "Laravel"
+      ]
+    },
+    {
+      "canonical": "Symfony",
+      "category": "backend",
+      "variants": [
+        "Symfony"
+      ]
+    },
+    {
+      "canonical": "GraphQL",
+      "category": "backend",
+      "variants": [
+        "GraphQL",
+        "Graph QL"
+      ]
+    },
+    {
+      "canonical": "gRPC",
+      "category": "backend",
+      "variants": [
+        "gRPC"
+      ]
+    },
+    {
+      "canonical": "REST",
+      "category": "backend",
+      "variants": [
+        "REST",
+        "RESTful",
+        "REST API",
+        "REST APIs"
+      ]
+    },
+    {
+      "canonical": "Redux",
+      "category": "frontend",
+      "variants": [
+        "Redux"
+      ]
+    },
+    {
+      "canonical": "MobX",
+      "category": "frontend",
+      "variants": [
+        "MobX",
+        "Mobx"
+      ]
+    },
+    {
+      "canonical": "jQuery",
+      "category": "frontend",
+      "variants": [
+        "jQuery",
+        "Jquery"
+      ]
+    },
+    {
+      "canonical": "Bootstrap",
+      "category": "frontend",
+      "variants": [
+        "Bootstrap"
+      ]
+    },
+    {
+      "canonical": "Tailwind CSS",
+      "category": "frontend",
+      "variants": [
+        "Tailwind CSS",
+        "Tailwind"
+      ]
+    },
+    {
+      "canonical": "WebSocket",
+      "category": "backend",
+      "variants": [
+        "WebSocket",
+        "Web Sockets",
+        "Websockets"
+      ]
+    },
+    {
+      "canonical": "HTML/CSS",
+      "category": "frontend",
+      "variants": [
+        "HTML/CSS",
+        "HTML and CSS",
+        "HTML & CSS"
+      ]
+    },
+    {
+      "canonical": "Machine Learning",
+      "category": "ml",
+      "variants": [
+        "Machine Learning",
+        "Machine-learning",
+        "ML"
+      ]
+    },
+    {
+      "canonical": "Deep Learning",
+      "category": "ml",
+      "variants": [
+        "Deep Learning",
+        "Deep-learning",
+        "DL"
+      ]
+    },
+    {
+      "canonical": "TensorFlow",
+      "category": "ml",
+      "variants": [
+        "TensorFlow",
+        "Tensorflow"
+      ]
+    },
+    {
+      "canonical": "PyTorch",
+      "category": "ml",
+      "variants": [
+        "PyTorch",
+        "Pytorch",
+        "Torch"
+      ]
+    },
+    {
+      "canonical": "Keras",
+      "category": "ml",
+      "variants": [
+        "Keras"
+      ]
+    },
+    {
+      "canonical": "scikit-learn",
+      "category": "ml",
+      "variants": [
+        "scikit-learn",
+        "scikit learn",
+        "sklearn"
+      ]
+    },
+    {
+      "canonical": "pandas",
+      "category": "data",
+      "variants": [
+        "pandas",
+        "Pandas"
+      ]
+    },
+    {
+      "canonical": "NumPy",
+      "category": "data",
+      "variants": [
+        "NumPy",
+        "Numpy"
+      ]
+    },
+    {
+      "canonical": "Spark",
+      "category": "data",
+      "variants": [
+        "Apache Spark",
+        "Spark"
+      ]
+    },
+    {
+      "canonical": "Hadoop",
+      "category": "data",
+      "variants": [
+        "Hadoop",
+        "Apache Hadoop"
+      ]
+    },
+    {
+      "canonical": "Kafka",
+      "category": "data",
+      "variants": [
+        "Apache Kafka",
+        "Kafka"
+      ]
+    },
+    {
+      "canonical": "Airflow",
+      "category": "data",
+      "variants": [
+        "Airflow",
+        "Apache Airflow"
+      ]
+    },
+    {
+      "canonical": "Databricks",
+      "category": "data",
+      "variants": [
+        "Databricks"
+      ]
+    },
+    {
+      "canonical": "MLflow",
+      "category": "ml",
+      "variants": [
+        "MLflow",
+        "ML Flow"
+      ]
+    },
+    {
+      "canonical": "Hugging Face",
+      "category": "ml",
+      "variants": [
+        "Hugging Face",
+        "HuggingFace",
+        "Huggingface"
+      ]
+    },
+    {
+      "canonical": "LangChain",
+      "category": "ml",
+      "variants": [
+        "LangChain",
+        "Langchain"
+      ]
+    },
+    {
+      "canonical": "RAG",
+      "category": "ml",
+      "variants": [
+        "RAG",
+        "Retrieval-Augmented Generation",
+        "Retrieval Augmented Generation"
+      ]
+    },
+    {
+      "canonical": "LLM",
+      "category": "ml",
+      "variants": [
+        "LLM",
+        "LLMs",
+        "Large Language Model",
+        "Large Language Models"
+      ]
+    },
+    {
+      "canonical": "OpenAI",
+      "category": "ml",
+      "variants": [
+        "OpenAI"
+      ]
+    },
+    {
+      "canonical": "Computer Vision",
+      "category": "ml",
+      "variants": [
+        "Computer Vision",
+        "Computer-vision"
+      ]
+    },
+    {
+      "canonical": "NLP",
+      "category": "ml",
+      "variants": [
+        "NLP",
+        "Natural Language Processing"
+      ]
+    },
+    {
+      "canonical": "Data Engineering",
+      "category": "data",
+      "variants": [
+        "Data Engineering",
+        "Data engineering"
+      ]
+    },
+    {
+      "canonical": "Data Science",
+      "category": "data",
+      "variants": [
+        "Data Science",
+        "Data science"
+      ]
+    },
+    {
+      "canonical": "Data Analysis",
+      "category": "data",
+      "variants": [
+        "Data Analysis",
+        "Data analytics",
+        "Analytics"
+      ]
+    },
+    {
+      "canonical": "ETL",
+      "category": "data",
+      "variants": [
+        "ETL"
+      ]
+    },
+    {
+      "canonical": "Feature Engineering",
+      "category": "ml",
+      "variants": [
+        "Feature Engineering",
+        "Feature engineering"
+      ]
+    },
+    {
+      "canonical": "Recommendation Systems",
+      "category": "ml",
+      "variants": [
+        "Recommendation Systems",
+        "Recommendation Systems",
+        "Recommender Systems",
+        "Recommendation engine"
+      ]
+    },
+    {
+      "canonical": "Time Series",
+      "category": "ml",
+      "variants": [
+        "Time Series",
+        "Time-series"
+      ]
+    },
+    {
+      "canonical": "Anomaly Detection",
+      "category": "ml",
+      "variants": [
+        "Anomaly Detection",
+        "Anomaly detection"
+      ]
+    },
+    {
+      "canonical": "Data Visualization",
+      "category": "data",
+      "variants": [
+        "Data Visualization",
+        "Visualization",
+        "Visualizations",
+        "Dashboards"
+      ]
+    },
+    {
+      "canonical": "PostgreSQL",
+      "category": "database",
+      "variants": [
+        "PostgreSQL",
+        "Postgres"
+      ]
+    },
+    {
+      "canonical": "MySQL",
+      "category": "database",
+      "variants": [
+        "MySQL",
+        "My SQL"
+      ]
+    },
+    {
+      "canonical": "SQLite",
+      "category": "database",
+      "variants": [
+        "SQLite"
+      ]
+    },
+    {
+      "canonical": "MongoDB",
+      "category": "database",
+      "variants": [
+        "MongoDB",
+        "Mongo"
+      ]
+    },
+    {
+      "canonical": "Redis",
+      "category": "database",
+      "variants": [
+        "Redis"
+      ]
+    },
+    {
+      "canonical": "Cassandra",
+      "category": "database",
+      "variants": [
+        "Cassandra",
+        "Apache Cassandra"
+      ]
+    },
+    {
+      "canonical": "DynamoDB",
+      "category": "database",
+      "variants": [
+        "DynamoDB",
+        "Dynamo DB"
+      ]
+    },
+    {
+      "canonical": "Elasticsearch",
+      "category": "database",
+      "variants": [
+        "Elasticsearch",
+        "Elastic Search"
+      ]
+    },
+    {
+      "canonical": "Snowflake",
+      "category": "database",
+      "variants": [
+        "Snowflake"
+      ]
+    },
+    {
+      "canonical": "BigQuery",
+      "category": "database",
+      "variants": [
+        "BigQuery",
+        "Big Query"
+      ]
+    },
+    {
+      "canonical": "Redshift",
+      "category": "database",
+      "variants": [
+        "Redshift",
+        "Amazon Redshift"
+      ]
+    },
+    {
+      "canonical": "ClickHouse",
+      "category": "database",
+      "variants": [
+        "ClickHouse",
+        "Click House"
+      ]
+    },
+    {
+      "canonical": "Neo4j",
+      "category": "database",
+      "variants": [
+        "Neo4j"
+      ]
+    },
+    {
+      "canonical": "Oracle",
+      "category": "database",
+      "variants": [
+        "Oracle"
+      ]
+    },
+    {
+      "canonical": "MariaDB",
+      "category": "database",
+      "variants": [
+        "MariaDB"
+      ]
+    },
+    {
+      "canonical": "Data Warehouse",
+      "category": "database",
+      "variants": [
+        "Data Warehouse",
+        "Data warehouse",
+        "Warehouse"
+      ]
+    },
+    {
+      "canonical": "Data Lake",
+      "category": "database",
+      "variants": [
+        "Data Lake",
+        "Data lake"
+      ]
+    },
+    {
+      "canonical": "Vector Database",
+      "category": "database",
+      "variants": [
+        "Vector Database",
+        "Vector Databases",
+        "Vector store",
+        "Vector stores"
+      ]
+    },
+    {
+      "canonical": "AWS",
+      "category": "cloud",
+      "variants": [
+        "AWS",
+        "Amazon Web Services"
+      ]
+    },
+    {
+      "canonical": "Azure",
+      "category": "cloud",
+      "variants": [
+        "Azure",
+        "Microsoft Azure"
+      ]
+    },
+    {
+      "canonical": "GCP",
+      "category": "cloud",
+      "variants": [
+        "GCP",
+        "Google Cloud",
+        "Google Cloud Platform"
+      ]
+    },
+    {
+      "canonical": "Docker",
+      "category": "devops",
+      "variants": [
+        "Docker"
+      ]
+    },
+    {
+      "canonical": "Kubernetes",
+      "category": "devops",
+      "variants": [
+        "Kubernetes",
+        "K8s",
+        "K8S"
+      ]
+    },
+    {
+      "canonical": "Terraform",
+      "category": "devops",
+      "variants": [
+        "Terraform"
+      ]
+    },
+    {
+      "canonical": "Ansible",
+      "category": "devops",
+      "variants": [
+        "Ansible"
+      ]
+    },
+    {
+      "canonical": "Jenkins",
+      "category": "devops",
+      "variants": [
+        "Jenkins"
+      ]
+    },
+    {
+      "canonical": "GitHub Actions",
+      "category": "devops",
+      "variants": [
+        "GitHub Actions",
+        "Github Actions",
+        "GH Actions"
+      ]
+    },
+    {
+      "canonical": "GitLab CI",
+      "category": "devops",
+      "variants": [
+        "GitLab CI",
+        "Gitlab CI",
+        "GitLab CI/CD",
+        "Gitlab CI/CD"
+      ]
+    },
+    {
+      "canonical": "CircleCI",
+      "category": "devops",
+      "variants": [
+        "CircleCI",
+        "Circle CI"
+      ]
+    },
+    {
+      "canonical": "Helm",
+      "category": "devops",
+      "variants": [
+        "Helm"
+      ]
+    },
+    {
+      "canonical": "Prometheus",
+      "category": "devops",
+      "variants": [
+        "Prometheus"
+      ]
+    },
+    {
+      "canonical": "Grafana",
+      "category": "devops",
+      "variants": [
+        "Grafana"
+      ]
+    },
+    {
+      "canonical": "Datadog",
+      "category": "devops",
+      "variants": [
+        "Datadog"
+      ]
+    },
+    {
+      "canonical": "New Relic",
+      "category": "devops",
+      "variants": [
+        "New Relic"
+      ]
+    },
+    {
+      "canonical": "nginx",
+      "category": "devops",
+      "variants": [
+        "nginx",
+        "NGINX",
+        "Nginx"
+      ]
+    },
+    {
+      "canonical": "Linux",
+      "category": "devops",
+      "variants": [
+        "Linux"
+      ]
+    },
+    {
+      "canonical": "CI/CD",
+      "category": "devops",
+      "variants": [
+        "CI/CD",
+        "Continuous Integration",
+        "Continuous Delivery",
+        "Continuous Deployment"
+      ]
+    },
+    {
+      "canonical": "Git",
+      "category": "devops",
+      "variants": [
+        "Git"
+      ]
+    },
+    {
+      "canonical": "GitHub",
+      "category": "devops",
+      "variants": [
+        "GitHub",
+        "Github"
+      ]
+    },
+    {
+      "canonical": "GitLab",
+      "category": "devops",
+      "variants": [
+        "GitLab",
+        "Gitlab"
+      ]
+    },
+    {
+      "canonical": "Containers",
+      "category": "devops",
+      "variants": [
+        "Containers",
+        "Containerization"
+      ]
+    },
+    {
+      "canonical": "Serverless",
+      "category": "cloud",
+      "variants": [
+        "Serverless",
+        "server-less"
+      ]
+    },
+    {
+      "canonical": "Microservices",
+      "category": "backend",
+      "variants": [
+        "Microservices",
+        "Micro-services",
+        "Micro service",
+        "Micro services"
+      ]
+    },
+    {
+      "canonical": "Android",
+      "category": "mobile",
+      "variants": [
+        "Android"
+      ]
+    },
+    {
+      "canonical": "iOS",
+      "category": "mobile",
+      "variants": [
+        "iOS",
+        "IOS"
+      ]
+    },
+    {
+      "canonical": "Flutter",
+      "category": "mobile",
+      "variants": [
+        "Flutter"
+      ]
+    },
+    {
+      "canonical": "Xamarin",
+      "category": "mobile",
+      "variants": [
+        "Xamarin"
+      ]
+    },
+    {
+      "canonical": "Expo",
+      "category": "mobile",
+      "variants": [
+        "Expo"
+      ]
+    },
+    {
+      "canonical": "Mobile Development",
+      "category": "mobile",
+      "variants": [
+        "Mobile Development",
+        "Mobile apps",
+        "Mobile applications"
+      ]
+    },
+    {
+      "canonical": "Agile",
+      "category": "methodology",
+      "variants": [
+        "Agile"
+      ]
+    },
+    {
+      "canonical": "Scrum",
+      "category": "methodology",
+      "variants": [
+        "Scrum"
+      ]
+    },
+    {
+      "canonical": "Kanban",
+      "category": "methodology",
+      "variants": [
+        "Kanban"
+      ]
+    },
+    {
+      "canonical": "TDD",
+      "category": "methodology",
+      "variants": [
+        "TDD",
+        "Test-Driven Development",
+        "Test Driven Development"
+      ]
+    },
+    {
+      "canonical": "System Design",
+      "category": "methodology",
+      "variants": [
+        "System Design",
+        "Systems Design",
+        "System architecture",
+        "Systems architecture"
+      ]
+    },
+    {
+      "canonical": "Distributed Systems",
+      "category": "methodology",
+      "variants": [
+        "Distributed Systems",
+        "Distributed systems",
+        "Distributed computing",
+        "Distributed services",
+        "Distributed platforms",
+        "Distributed infrastructure"
+      ]
+    },
+    {
+      "canonical": "Software Engineering",
+      "category": "domain",
+      "variants": [
+        "Software Engineering",
+        "Software engineering",
+        "Software Engineer",
+        "Software Developer",
+        "Software Development",
+        "Software development"
+      ]
+    },
+    {
+      "canonical": "Full-stack",
+      "category": "domain",
+      "variants": [
+        "Full-stack",
+        "Fullstack",
+        "Full Stack"
+      ]
+    },
+    {
+      "canonical": "Front-end",
+      "category": "frontend",
+      "variants": [
+        "Front-end",
+        "Frontend",
+        "Front end"
+      ]
+    },
+    {
+      "canonical": "Back-end",
+      "category": "backend",
+      "variants": [
+        "Back-end",
+        "Backend",
+        "Back end"
+      ]
+    },
+    {
+      "canonical": "API Development",
+      "category": "backend",
+      "variants": [
+        "API Development",
+        "API Design",
+        "APIs",
+        "API"
+      ]
+    },
+    {
+      "canonical": "OOP",
+      "category": "methodology",
+      "variants": [
+        "Object-Oriented Programming",
+        "OOP",
+        "Object oriented"
+      ]
+    },
+    {
+      "canonical": "Functional Programming",
+      "category": "methodology",
+      "variants": [
+        "Functional Programming",
+        "Functional programming"
+      ]
+    },
+    {
+      "canonical": "Design Patterns",
+      "category": "methodology",
+      "variants": [
+        "Design Patterns",
+        "Software design patterns"
+      ]
+    },
+    {
+      "canonical": "Unit Testing",
+      "category": "methodology",
+      "variants": [
+        "Unit Testing",
+        "Unit tests",
+        "Unit testing",
+        "Unit test"
+      ]
+    },
+    {
+      "canonical": "Integration Testing",
+      "category": "methodology",
+      "variants": [
+        "Integration Testing",
+        "Integration tests"
+      ]
+    },
+    {
+      "canonical": "Test Automation",
+      "category": "methodology",
+      "variants": [
+        "Test Automation",
+        "Automated Testing",
+        "Automated tests"
+      ]
+    },
+    {
+      "canonical": "QA",
+      "category": "methodology",
+      "variants": [
+        "Quality Assurance",
+        "QA"
+      ]
+    },
+    {
+      "canonical": "Security",
+      "category": "domain",
+      "variants": [
+        "Security",
+        "Cybersecurity",
+        "Cyber Security",
+        "Application Security",
+        "AppSec",
+        "Security Engineering"
+      ]
+    },
+    {
+      "canonical": "Cryptography",
+      "category": "domain",
+      "variants": [
+        "Cryptography"
+      ]
+    },
+    {
+      "canonical": "Networking",
+      "category": "domain",
+      "variants": [
+        "Network Engineering",
+        "Computer Networking"
+      ]
+    },
+    {
+      "canonical": "SRE",
+      "category": "domain",
+      "variants": [
+        "Site Reliability",
+        "SRE",
+        "Reliability Engineering",
+        "Reliability Engineer"
+      ]
+    },
+    {
+      "canonical": "Accessibility",
+      "category": "domain",
+      "variants": [
+        "Accessibility",
+        "A11y"
+      ]
+    },
+    {
+      "canonical": "High Availability",
+      "category": "domain",
+      "variants": [
+        "High Availability",
+        "High-availability"
+      ]
+    },
+    {
+      "canonical": "Observability",
+      "category": "devops",
+      "variants": [
+        "Observability",
+        "Monitoring",
+        "Logging",
+        "Tracing"
+      ]
+    },
+    {
+      "canonical": "Performance Engineering",
+      "category": "domain",
+      "variants": [
+        "Performance Engineering",
+        "Performance Optimization",
+        "Performance tuning"
+      ]
+    },
+    {
+      "canonical": "Web Development",
+      "category": "domain",
+      "variants": [
+        "Web Development",
+        "Web applications",
+        "Web apps"
+      ]
+    },
+    {
+      "canonical": "Jira",
+      "category": "tool",
+      "variants": [
+        "Jira",
+        "JIRA"
+      ]
+    },
+    {
+      "canonical": "Confluence",
+      "category": "tool",
+      "variants": [
+        "Confluence"
+      ]
+    },
+    {
+      "canonical": "Figma",
+      "category": "tool",
+      "variants": [
+        "Figma"
+      ]
+    },
+    {
+      "canonical": "Postman",
+      "category": "tool",
+      "variants": [
+        "Postman"
+      ]
+    },
+    {
+      "canonical": "Swagger",
+      "category": "tool",
+      "variants": [
+        "Swagger",
+        "OpenAPI"
+      ]
+    },
+    {
+      "canonical": "Notion",
+      "category": "tool",
+      "variants": [
+        "Notion"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "patterns": [
+    {
+      "triggers": [
+        "analytical",
+        "analysis",
+        "problem",
+        "resolve"
+      ],
+      "pattern": "\\b(analyz\\w*|analysis|diagnos\\w*|root cause|resolv\\w*)\\b"
+    },
+    {
+      "triggers": [
+        "troubleshoot",
+        "debug",
+        "bugs",
+        "issues"
+      ],
+      "pattern": "\\b(troubleshoot\\w*|debug\\w*|fix\\w*|reproduc\\w*)\\b"
+    },
+    {
+      "triggers": [
+        "communication",
+        "present",
+        "written",
+        "documentation"
+      ],
+      "pattern": "\\b(communicat\\w*|present\\w*|document\\w*|authored|wrote)\\b"
+    },
+    {
+      "triggers": [
+        "collaborate",
+        "collaboration",
+        "teamwork",
+        "cross-functional"
+      ],
+      "pattern": "\\b(collaborat\\w*|cross[- ]functional|paired)\\b"
+    },
+    {
+      "triggers": [
+        "leadership",
+        "lead",
+        "mentor",
+        "coach"
+      ],
+      "pattern": "\\b(led|lead\\w*|mentor\\w*|coach\\w*|directed|owned)\\b"
+    },
+    {
+      "triggers": [
+        "organizational",
+        "coordinate",
+        "prioritize"
+      ],
+      "pattern": "\\b(organiz\\w*|coordinat\\w*|prioritiz\\w*|schedul\\w*)\\b"
+    }
+  ]
+}

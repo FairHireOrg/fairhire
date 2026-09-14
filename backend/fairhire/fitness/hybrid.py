@@ -22,6 +22,12 @@ from fairhire.fitness.matcher import (
 )
 from fairhire.fitness.ner import ParsedDoc, _all_tokens, _sentence_for, find_occurrences
 
+import nltk
+from sklearn.metrics.pairwise import cosine_similarity
+
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+
 STOPWORDS = {
     "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has", "have",
     "in", "is", "it", "of", "on", "or", "the", "to", "with", "you", "your", "our",

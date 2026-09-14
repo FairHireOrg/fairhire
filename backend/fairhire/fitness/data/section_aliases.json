@@ -1,0 +1,57 @@
+{
+  "summary": [
+    "summary",
+    "professional summary",
+    "executive summary",
+    "profile",
+    "professional profile",
+    "about",
+    "objective",
+    "career objective"
+  ],
+  "experience": [
+    "experience",
+    "work experience",
+    "professional experience",
+    "employment",
+    "employment history",
+    "work history",
+    "career history"
+  ],
+  "skills": [
+    "skills",
+    "technical skills",
+    "core skills",
+    "competencies",
+    "technologies",
+    "tech stack",
+    "tools",
+    "tooling",
+    "technical tooling"
+  ],
+  "education": [
+    "education",
+    "academic background",
+    "academics",
+    "degrees"
+  ],
+  "projects": [
+    "projects",
+    "selected projects",
+    "personal projects",
+    "side projects"
+  ],
+  "publications": [
+    "publications",
+    "papers",
+    "research",
+    "conference proceedings"
+  ],
+  "certifications": [
+    "certifications",
+    "certificates",
+    "licenses",
+    "credentials",
+    "professional certifications"
+  ]
+}

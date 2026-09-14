@@ -70,7 +70,7 @@ class Config:
         default_factory=lambda: os.environ.get("FAIRHIRE_DEEPSEEK_KEY", "").strip()
     )
     deepseek_model: str = field(
-        default_factory=lambda: os.environ.get("FAIRHIRE_DEEPSEEK_MODEL", "deepseek-chat")
+        default_factory=lambda: os.environ.get("FAIRHIRE_DEEPSEEK_MODEL", "deepseek-flash")
     )
 
     embedding_model: str = "sentence-transformers/all-mpnet-base-v2"
