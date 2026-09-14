@@ -5,57 +5,15 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from fairhire.fitness.lexicon import section_aliases as _load_aliases
 
-SECTION_ALIASES: dict[str, tuple[str, ...]] = {
-    "summary": (
-        "summary",
-        "professional summary",
-        "executive summary",
-        "profile",
-        "professional profile",
-        "about",
-        "objective",
-        "career objective",
-    ),
-    "experience": (
-        "experience",
-        "work experience",
-        "professional experience",
-        "employment",
-        "employment history",
-        "work history",
-        "career history",
-    ),
-    "skills": (
-        "skills",
-        "technical skills",
-        "core skills",
-        "competencies",
-        "technologies",
-        "tech stack",
-        "tools",
-        "tooling",
-        "technical tooling",
-    ),
-    "education": (
-        "education",
-        "academic background",
-        "academics",
-        "degrees",
-    ),
-    "projects": (
-        "projects",
-        "selected projects",
-        "personal projects",
-        "side projects",
-    ),
-    "publications": (
-        "publications",
-        "papers",
-        "research",
-        "conference proceedings",
-    ),
-}
+
+def _aliases() -> dict[str, tuple[str, ...]]:
+    return _load_aliases()
+
+
+# Back-compat alias; prefer fairhire.fitness.lexicon.section_aliases().
+SECTION_ALIASES: dict[str, tuple[str, ...]] = _load_aliases()
 
 
 @dataclass
@@ -132,14 +90,17 @@ def parse_sections(resume_text: str) -> ResumeSections:
                     break
 
     if not found["experience"]:
-        # Dates like 2020-2023 or Jan 2021 often mark experience blocks
+        # Dates like 2020-2023, Jan 2021, or "June 2021 – March 2024" often
+        # mark experience blocks even when the heading is non-standard.
+        month = r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)"
         date_hits = len(
             re.findall(
-                r"\b(?:19|20)\d{2}\s*[-–—]\s*(?:(?:19|20)\d{2}|present|current)\b",
+                rf"\b(?:{month}\s+)?(?:19|20)\d{{2}}\s*[-–—]\s*"
+                r"(?:(?:19|20)\d{2}|present|current)\b",
                 resume_text,
                 flags=re.I,
             )
-        )
+        ) + len(re.findall(rf"\b{month}\s+(?:19|20)\d{{2}}\b", resume_text, flags=re.I))
         if date_hits >= 1:
             found["experience"] = True
             bodies.setdefault("experience", resume_text)

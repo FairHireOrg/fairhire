@@ -49,7 +49,7 @@ class FitnessReport:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "ats_score": self.ats_score,
+            "ats_score": round(self.ats_score, 1),
             "ats_grade": self.ats_grade,
             "extraction_status": self.extraction_status,
             "job_title": self.job_title,

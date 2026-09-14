@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { ArrowRight, ArrowUpRight, CheckCircle, FileText, Files, Info, ListChecks, MagnifyingGlass, Question, ShieldCheck, UploadSimple, X } from "@phosphor-icons/react";
-import { analyzeFitness, type AtsDimension, type FitnessResult, type KeywordGroup } from "@/lib/api";
+import { ArrowRight, ArrowUpRight, CheckCircle, DownloadSimple, FileText, Files, Info, ListChecks, MagnifyingGlass, PencilLine, Plus, Question, ShieldCheck, Trash, UploadSimple, X } from "@phosphor-icons/react";
+import { analyzeFitness, exportDocument, putDocument, type AtsDimension, type AtsRecommendation, type EducationItem, type ExperienceItem, type FitnessResult, type KeywordGroup, type ResumeDocument } from "@/lib/api";
 import Onboarding from "./Onboarding";
 
 const SAMPLE_JD = `Backend Engineer
@@ -64,8 +64,25 @@ function Field({ label, value }: { label: string; value: string | string[] | nul
   );
 }
 
-function KeywordRow({ g }: { g: KeywordGroup }) {
+function EditorField({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
+    <label className="field">
+      <span>{label}</span>
+      <input value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
+    </label>
+  );
+}
+
+function EditorArea({ label, value, onChange, rows, placeholder }: { label: string; value: string; onChange: (v: string) => void; rows?: number; placeholder?: string }) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <textarea className="editor-textarea" rows={rows ?? 3} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
+    </label>
+  );
+}
+
+function KeywordRow({ g }: { g: KeywordGroup }) {  return (
     <li className="requirement-row">
       <span className={g.matched ? "status-icon success-text" : "status-icon muted"}>
         {g.matched ? <CheckCircle size={21} weight="fill" /> : <MagnifyingGlass size={21} />}
@@ -92,6 +109,14 @@ export default function Workspace() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [replay, setReplay] = useState(0);
   const [method, setMethod] = useState(false);
+  const [doc, setDoc] = useState<ResumeDocument | null>(null);
+  const [docScore, setDocScore] = useState<number | null>(null);
+  const [docGrade, setDocGrade] = useState("");
+  const [docRecs, setDocRecs] = useState<AtsRecommendation[]>([]);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [docError, setDocError] = useState("");
   const upload = useRef<HTMLInputElement>(null);
   const summary = useRef<HTMLElement>(null);
 
@@ -105,15 +130,51 @@ export default function Workspace() {
     try {
       const response = await analyzeFitness({ jobDescription: jd, file: mode === "upload" ? file : null, resumeText: mode === "paste" ? resume : undefined });
       setResult(response); setSnapshot(input);
+      setDoc(response.document); setDirty(false); setDocError("");
+      setDocScore(response.document ? Math.round(response.ats_score) : null);
+      setDocGrade(response.ats_grade);
+      setDocRecs(response.recommendations);
       setTimeout(() => summary.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
     } catch (e) { setError(e instanceof Error ? e.message : "Analysis failed. Please try again."); }
     finally { setLoading(false); }
   }
   function chooseFile(value: File | undefined) {
     if (!value) return;
-    if (!/\.(pdf|txt|md)$/i.test(value.name)) { setError("Choose a PDF, TXT, or Markdown file."); return; }
+    if (!/\.(pdf|docx|txt|md)$/i.test(value.name)) { setError("Choose a PDF, DOCX, TXT, or Markdown file."); return; }
     if (value.size > 10 * 1024 * 1024) { setError("Choose a file smaller than 10 MB."); return; }
     setFile(value); setError("");
+  }
+  function patchDoc(patch: Partial<ResumeDocument>) {
+    setDoc(d => (d ? { ...d, ...patch } : d));
+    setDirty(true);
+  }
+  async function saveDoc() {
+    if (!doc) return;
+    setSaving(true); setDocError("");
+    try {
+      const scored = await putDocument(doc);
+      setDoc(scored.document); setDirty(false);
+      setDocScore(Math.round(scored.ats_score)); setDocGrade(scored.ats_grade);
+      setDocRecs(scored.recommendations);
+    } catch (e) { setDocError(e instanceof Error ? e.message : "Could not re-score the document."); }
+    finally { setSaving(false); }
+  }
+  async function downloadDocx() {
+    const current = dirty && doc ? await putDocument(doc).catch(() => null) : null;
+    const source = current?.document ?? doc;
+    if (!source) return;
+    if (current) { setDoc(current.document); setDirty(false); setDocScore(Math.round(current.ats_score)); setDocGrade(current.ats_grade); setDocRecs(current.recommendations); }
+    setExporting(true); setDocError("");
+    try {
+      const blob = await exportDocument(source);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${(source.contact.name || "resume").trim().toLowerCase().replace(/\s+/g, "-") || "resume"}-ats.docx`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch (e) { setDocError(e instanceof Error ? e.message : "Could not export the document."); }
+    finally { setExporting(false); }
   }
 
   const sections = result?.sections_found ?? {};
@@ -161,7 +222,7 @@ export default function Workspace() {
             <section className="input-panel" data-tour="resume">
               <div className="input-heading"><div><span className="step-number">2</span><h2>Your resume</h2></div><div className="segmented" role="group" aria-label="Resume input mode"><button type="button" aria-pressed={mode === "upload"} disabled={loading} onClick={() => setMode("upload")}>Upload file</button><button type="button" aria-pressed={mode === "paste"} disabled={loading} onClick={() => setMode("paste")}>Paste text</button></div></div>
               <p className="input-hint">Use the version you plan to send with your application.</p>
-              {mode === "paste" ? <textarea aria-label="Resume text" disabled={loading} maxLength={100000} value={resume} onChange={e => setResume(e.target.value)} placeholder={"Paste your resume here...\n\nInclude your experience, skills, projects, and education."} /> : <div className="upload-area" onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); if (!loading) chooseFile(e.dataTransfer.files[0]); }}><input ref={upload} type="file" aria-label="Upload resume" accept=".pdf,.txt,.md" disabled={loading} onChange={e => chooseFile(e.target.files?.[0])} className="file-input" /><span className="upload-icon">{file ? <FileText size={30} /> : <UploadSimple size={30} />}</span><h3>{file ? file.name : "Drop your resume here"}</h3><p>{file ? (file.size / 1024).toFixed(0) + " KB · Ready to analyze" : "PDF, TXT, or Markdown. Up to 10 MB."}</p><button type="button" className="button secondary" disabled={loading} onClick={() => upload.current?.click()}>{file ? "Choose a different file" : "Browse files"}<ArrowRight size={15} /></button></div>}
+              {mode === "paste" ? <textarea aria-label="Resume text" disabled={loading} maxLength={100000} value={resume} onChange={e => setResume(e.target.value)} placeholder={"Paste your resume here...\n\nInclude your experience, skills, projects, and education."} /> : <div className="upload-area" onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); if (!loading) chooseFile(e.dataTransfer.files[0]); }}><input ref={upload} type="file" aria-label="Upload resume" accept=".pdf,.docx,.txt,.md" disabled={loading} onChange={e => chooseFile(e.target.files?.[0])} className="file-input" /><span className="upload-icon">{file ? <FileText size={30} /> : <UploadSimple size={30} />}</span><h3>{file ? file.name : "Drop your resume here"}</h3><p>{file ? (file.size / 1024).toFixed(0) + " KB · Ready to analyze" : "PDF, DOCX, TXT, or Markdown. Up to 10 MB."}</p><button type="button" className="button secondary" disabled={loading} onClick={() => upload.current?.click()}>{file ? "Choose a different file" : "Browse files"}<ArrowRight size={15} /></button></div>}
               <div className="input-footer"><span>{mode === "upload" ? "Text-based PDFs work best" : "Only pasted text will be analyzed"}</span><span>{mode === "paste" ? resume.length.toLocaleString() + " characters" : "10 MB max"}</span></div>
             </section>
           </div>
@@ -200,8 +261,86 @@ export default function Workspace() {
               : <ol className="recommendation-list">{result.recommendations.map(r => <li key={r.code} className={"recommendation " + r.severity}><div><span className={"badge " + (r.severity === "high" ? "warning" : r.severity === "medium" ? "neutral" : "success")}>{r.severity}</span><h3>{r.title}</h3></div><p>{r.detail}</p><p className="action"><ArrowRight size={14} />{r.action}</p></li>)}</ol>}
           </section>
 
-          <section className="keywords-panel" id="keywords">
-            <div className="section-heading"><div><h2>What the system read</h2><p>The parsed identity, sections, and detected technologies.</p></div></div>
+          {doc && <section className="editor-panel" id="editor">
+            <div className="section-heading">
+              <div>
+                <h2><PencilLine size={17} /> Fix it in the editor</h2>
+                <p>Edit the structured resume, re-score instantly, and export an ATS-safe DOCX when the checklist clears.</p>
+              </div>
+              {docRecs.length > 0
+                ? <span className="badge warning">{docRecs.length} issue{docRecs.length === 1 ? "" : "s"} left</span>
+                : <span className="badge success">ATS-clean</span>}
+            </div>
+            {docScore !== null && <p className="editor-score">Live score <strong className="mono">{docScore} / 100</strong> <span className="grade-badge">{docGrade}</span>{dirty && <span className="muted"> · unsaved changes</span>}</p>}
+            {docRecs.length > 0 && <ol className="recommendation-list editor-checklist">
+              {docRecs.map(r => <li key={r.code} className={"recommendation " + r.severity}>
+                <div>
+                  <span className={"badge " + (r.severity === "high" ? "warning" : r.severity === "medium" ? "neutral" : "success")}>{r.severity}</span>
+                  <h3>{r.title}</h3>
+                  {r.line >= 1 && <span className="mono muted">line {r.line}</span>}
+                </div>
+                <p className="action"><ArrowRight size={14} />{r.action}</p>
+              </li>)}
+            </ol>}
+            <div className="editor-grid">
+              <div className="editor-card">
+                <h3>Contact</h3>
+                <EditorField label="Name" value={doc.contact.name} onChange={v => patchDoc({ contact: { ...doc.contact, name: v } })} placeholder="Jordan Ellis" />
+                <EditorField label="Email" value={doc.contact.email} onChange={v => patchDoc({ contact: { ...doc.contact, email: v } })} placeholder="you@example.com" />
+                <EditorField label="Phone" value={doc.contact.phone} onChange={v => patchDoc({ contact: { ...doc.contact, phone: v } })} placeholder="(555) 123-4567" />
+                <EditorField label="Location" value={doc.contact.location} onChange={v => patchDoc({ contact: { ...doc.contact, location: v } })} placeholder="City, ST" />
+                <EditorField label="LinkedIn" value={doc.contact.linkedin} onChange={v => patchDoc({ contact: { ...doc.contact, linkedin: v } })} placeholder="linkedin.com/in/..." />
+                <EditorField label="GitHub" value={doc.contact.github} onChange={v => patchDoc({ contact: { ...doc.contact, github: v } })} placeholder="github.com/..." />
+              </div>
+              <div className="editor-card">
+                <h3>Summary</h3>
+                <EditorArea label="Professional summary" rows={5} value={doc.summary} onChange={v => patchDoc({ summary: v })} placeholder="2–3 lines under a standard 'Summary' heading." />
+              </div>
+              <div className="editor-card">
+                <h3>Skills</h3>
+                <EditorArea label="Comma-separated skills" rows={4} value={doc.skills.join(", ")} onChange={v => patchDoc({ skills: v.split(/[,;\n]/).map(s => s.trim()).filter(Boolean) })} placeholder="Python, PostgreSQL, Docker" />
+              </div>
+              <div className="editor-card">
+                <h3>Education</h3>
+                {doc.education.map((e, i) => <div key={i} className="editor-item">
+                  <EditorField label="Degree" value={e.degree} onChange={v => patchDoc({ education: doc.education.map((x, j) => j === i ? { ...x, degree: v } : x) })} placeholder="B.S. Computer Science" />
+                  <EditorField label="School" value={e.school} onChange={v => patchDoc({ education: doc.education.map((x, j) => j === i ? { ...x, school: v } : x) })} placeholder="University" />
+                  <EditorField label="Year" value={e.year} onChange={v => patchDoc({ education: doc.education.map((x, j) => j === i ? { ...x, year: v } : x) })} placeholder="2021" />
+                  <button type="button" className="icon-button" aria-label="Remove education entry" onClick={() => patchDoc({ education: doc.education.filter((_, j) => j !== i) })}><Trash size={16} /></button>
+                </div>)}
+                <button type="button" className="button secondary" onClick={() => patchDoc({ education: [...doc.education, { degree: "", school: "", year: "" } as EducationItem] })}><Plus size={14} /> Add education</button>
+              </div>
+            </div>
+            <div className="editor-card">
+              <h3>Experience</h3>
+              {doc.experience.length === 0 && <p className="muted">No roles yet — add your first one.</p>}
+              {doc.experience.map((e, i) => {
+                const set = (p: Partial<ExperienceItem>) => patchDoc({ experience: doc.experience.map((x, j) => j === i ? { ...x, ...p } : x) });
+                return <div key={i} className="editor-item editor-role">
+                  <EditorField label="Title" value={e.title} onChange={v => set({ title: v })} placeholder="Backend Engineer" />
+                  <EditorField label="Company" value={e.company} onChange={v => set({ company: v })} placeholder="Company" />
+                  <EditorField label="Start" value={e.start} onChange={v => set({ start: v })} placeholder="June 2021" />
+                  <EditorField label="End" value={e.end} onChange={v => set({ end: v })} placeholder="March 2024" />
+                  <EditorArea label="Bullets (one per line, start with action verbs)" rows={4} value={e.bullets.join("\n")} onChange={v => set({ bullets: v.split("\n").map(b => b.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim()).filter(Boolean) })} placeholder={"Built Python services handling 40M+ events per day"} />
+                  <button type="button" className="icon-button" aria-label="Remove role" onClick={() => patchDoc({ experience: doc.experience.filter((_, j) => j !== i) })}><Trash size={16} /></button>
+                </div>;
+              })}
+              <button type="button" className="button secondary" onClick={() => patchDoc({ experience: [...doc.experience, { title: "", company: "", location: "", start: "", end: "", bullets: [] } as ExperienceItem] })}><Plus size={14} /> Add role</button>
+            </div>
+            <div className="editor-card">
+              <h3>Certifications &amp; projects</h3>
+              <EditorArea label="Certifications (one per line)" value={doc.certifications.join("\n")} onChange={v => patchDoc({ certifications: v.split("\n").map(s => s.trim()).filter(Boolean) })} />
+              <EditorArea label="Projects (one per line)" value={doc.projects.join("\n")} onChange={v => patchDoc({ projects: v.split("\n").map(s => s.trim()).filter(Boolean) })} />
+            </div>
+            {docError && <div className="error-message" role="alert"><Info size={19} /><span>{docError}</span></div>}
+            <div className="editor-actions">
+              <button type="button" className="button secondary" disabled={saving || !dirty} onClick={() => void saveDoc()}>{saving ? <><span className="spinner" />Re-scoring</> : <><CheckCircle size={16} />Save & re-score</>}</button>
+              <button type="button" className="button primary" disabled={exporting} onClick={() => void downloadDocx()}>{exporting ? <><span className="spinner" />Exporting</> : <><DownloadSimple size={16} />Download ATS-safe DOCX</>}</button>
+            </div>
+            <p className="muted">Re-upload the exported file to verify the score holds.</p>
+          </section>}
+
+          <section className="keywords-panel" id="keywords">            <div className="section-heading"><div><h2>What the system read</h2><p>The parsed identity, sections, and detected technologies.</p></div></div>
             <div className="profile-grid">
               <dl className="profile-fields"><Field label="Name" value={result.resume_fields.name} /><Field label="Email" value={result.resume_fields.email} /><Field label="Phone" value={result.resume_fields.phone} /><Field label="Location" value={result.resume_fields.location} /><Field label="LinkedIn" value={result.resume_fields.linkedin} /><Field label="GitHub" value={result.resume_fields.github} /><Field label="Degrees" value={result.resume_fields.degrees} /><Field label="Roles" value={result.resume_fields.titles} /><Field label="Date ranges" value={result.resume_fields.date_ranges} /></dl>
               <div><h3>Detected technologies</h3>{result.skills.length ? <div className="skill-cloud">{result.skills.map(s => <span key={s}>{s}</span>)}</div> : <p className="muted">No recognizable technologies were tagged.</p>}</div>

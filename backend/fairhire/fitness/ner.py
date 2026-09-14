@@ -15,6 +15,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from fairhire.fitness.lexicon import role_words_pattern
 from fairhire.fitness.ontology import all_terms
 from fairhire.fitness.sections import parse_sections
 
@@ -397,12 +398,8 @@ def parse_resume(resume_text: str) -> ParsedDoc:
 # ---------------------------------------------------------------------------
 
 
-_ROLE_WORDS = re.compile(
-    r"\b(engineer|developer|manager|analyst|designer|scientist|intern|"
-    r"instructor|trainer|architect|consultant|founder|lead|researcher|"
-    r"director|specialist|administrator|coordinator|associate)\b",
-    re.I,
-)
+# Role indicators live in fitness/data/role_words.json (loaded via lexicon).
+_ROLE_WORDS = role_words_pattern()
 _ROLE_LINE_SKIP = re.compile(r"(@|https?://|linkedin|github|gmail|\.com\b)", re.I)
 _ROLE_HEADER_SKIP = re.compile(
     r"^(about|benefits?|responsibilities|requirements?|qualifications|"

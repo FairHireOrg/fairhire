@@ -101,3 +101,30 @@ input.optional, .optional { font-style: normal; font-size: 10px; color: var(--mu
 .keywords .requirement-row { cursor: default; }
 .keywords .requirement-row:hover { background: var(--panel); }
 @media (max-width: 640px) { .profile-grid { grid-template-columns: 1fr; } .profile-fields { grid-template-columns: 1fr; } }
+
+/* Structured DOCX-clean editor */
+.editor-panel { margin-top: 28px; }
+.editor-panel .section-heading h2 { display: flex; align-items: center; gap: 8px; }
+.editor-score { font-size: 13px; margin: 10px 0 4px; }
+.editor-score .grade-badge { margin-bottom: 0; margin-left: 6px; }
+.editor-checklist { margin-top: 12px; }
+.editor-checklist .mono { font-size: 11px; }
+.editor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+.editor-card { border: 1px solid var(--line); background: var(--panel); border-radius: 12px; padding: 18px; margin-top: 16px; }
+.editor-grid .editor-card { margin-top: 0; }
+.editor-card h3 { margin-bottom: 12px; }
+.editor-card > .button { margin-top: 8px; }
+.field { display: grid; gap: 6px; margin-bottom: 12px; }
+.field > span { font-size: 11px; color: var(--muted); font-weight: 550; }
+.field input, .editor-textarea { width: 100%; padding: 10px 12px; color: var(--ink); background: var(--base); border: 1px solid var(--line); border-radius: 8px; font-size: 12px; line-height: 1.6; }
+.editor-textarea { resize: vertical; min-height: 72px; height: auto; }
+.editor-item { position: relative; border-top: 1px solid var(--line); padding: 14px 0 4px; }
+.editor-item:first-of-type { border-top: 0; padding-top: 0; }
+.editor-item .icon-button { position: absolute; top: 10px; right: 0; }
+.editor-item .field { padding-right: 40px; }
+.editor-role { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.editor-role .field { padding-right: 0; }
+.editor-role .field:nth-of-type(n+5), .editor-role .icon-button { grid-column: 1 / -1; }
+.editor-role .icon-button { position: static; justify-self: end; margin-bottom: 8px; }
+.editor-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+@media (max-width: 640px) { .editor-grid, .editor-role { grid-template-columns: 1fr; } }

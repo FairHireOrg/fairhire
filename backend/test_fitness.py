@@ -56,6 +56,102 @@ Nice to have
 - PyTorch experience
 """
 
+CLEAN_RESUME = """Jordan Ellis
+jordan.ellis@example.com
+(555) 987-6543
+Austin, TX
+linkedin.com/in/jordanellis
+
+Summary
+Backend engineer with 5 years of experience building reliable APIs.
+
+Work Experience
+Backend Engineer | Harbor Software | June 2021 – March 2024
+- Built Python services handling 40M+ events per day
+- Designed REST APIs used by 200 customers
+- Reduced deploy time by 30% with Docker automation
+
+Education
+B.S. Computer Science, River Valley University | May 2021
+
+Skills
+Python, PostgreSQL, REST APIs, Docker, Kubernetes, AWS, Git
+"""
+
+# Simulates `pdftotext -layout` output for a two-column template: wide
+# interior gaps scramble the reading order for parsers.
+MULTICOLUMN_RESUME = """Jordan Ellis                    jordan.ellis@example.com
+(555) 987-6543                    Austin, TX
+
+Summary                    Backend engineer building APIs.
+Work Experience                    Harbor Software
+Backend Engineer                    June 2021 – March 2024
+- Built Python services                    handling 40M+ events
+- Designed REST APIs                    used by 200 customers
+Education                    River Valley University
+B.S. Computer Science                    May 2021
+Skills                    Python, Docker, AWS, Git
+"""
+
+CREATIVE_RESUME = """Jordan Ellis
+jordan.ellis@example.com
+(555) 987-6543
+Austin, TX
+
+My Journey
+Backend engineer with 5 years of experience building reliable APIs.
+
+What I Do Best
+Backend Engineer | Harbor Software | June 2021 – March 2024
+- Built Python services handling 40M+ events per day
+
+Toolbox
+Python, PostgreSQL, REST APIs, Docker, AWS, Git
+"""
+
+DECORATIVE_RESUME = """Jordan Ellis
+jordan.ellis@example.com
+(555) 987-6543
+Austin, TX
+
+Summary
+Backend engineer with 5 years of experience building reliable APIs.
+
+Experience
+Backend Engineer | Harbor Software | June 2021 – March 2024
+➔ Built Python services handling 40M+ events per day
+✓ Designed REST APIs used by 200 customers
+★ Reduced deploy time by 30% with Docker automation
+
+Education
+B.S. Computer Science, River Valley University
+
+Skills
+Python, PostgreSQL, REST APIs, Docker, AWS, Git
+"""
+
+MIXED_DATES_RESUME = """Jordan Ellis
+jordan.ellis@example.com
+(555) 987-6543
+Austin, TX
+
+Summary
+Backend engineer with 5 years of experience.
+
+Experience
+Backend Engineer | Harbor Software | June 2021 – March 2024
+- Built Python services handling 40M+ events per day
+
+Software Engineer | FinTech Co. | 2019-2021
+- Designed REST APIs used by 200 customers
+
+Education
+B.S. Computer Science, River Valley University
+
+Skills
+Python, PostgreSQL, REST APIs, Docker, AWS, Git
+"""
+
 
 def check(name: str, cond: bool | None) -> None:
     if not bool(cond):
@@ -230,6 +326,94 @@ Nice to have
         not g["matched"] and g["kind"] == "soft" for g in d["keyword_groups"]))
 
 
+def test_ats_clean_resume_scores_strong() -> None:
+    from fairhire.fitness.ats import evaluate_ats
+
+    r = evaluate_ats(parse_resume(CLEAN_RESUME))
+    check("clean resume scores Strong (>=80)", r.score >= 80)
+    check("clean resume has no high recommendations",
+          all(rec.severity != "high" for rec in r.recommendations))
+    codes = {rec.code for rec in r.recommendations}
+    for absent in ("layout_columns", "creative_headings", "decorative_bullets",
+                   "no_email", "no_phone", "no_skills", "no_experience"):
+        check(f"clean resume has no {absent} rec", absent not in codes)
+    by = {d.key: d for d in r.dimensions}
+    check("parser-safe family sums to ~0.55",
+          abs(sum(d.weight for d in r.dimensions if d.family == "parser_safe") - 0.55) < 1e-9)
+    check("extraction family sums to ~0.45",
+          abs(sum(d.weight for d in r.dimensions if d.family == "extraction") - 0.45) < 1e-9)
+    check("clean layout is 100", by["layout"].score == 100.0)
+    check("clean bullets are 100", by["bullet_style"].score == 100.0)
+    check("month-year dates are 100", by["date_format"].score == 100.0)
+
+
+def test_ats_multicolumn_layout_flagged() -> None:
+    from fairhire.fitness.ats import evaluate_ats
+
+    bad = evaluate_ats(parse_resume(MULTICOLUMN_RESUME))
+    good = evaluate_ats(parse_resume(CLEAN_RESUME))
+    codes = {rec.code for rec in bad.recommendations}
+    check("multicolumn emits layout_columns", "layout_columns" in codes)
+    by = {d.key: d for d in bad.dimensions}
+    check("multicolumn layout scores low", by["layout"].score < 60)
+    check("multicolumn scores below clean", bad.score < good.score)
+    rec = next(rec for rec in bad.recommendations if rec.code == "layout_columns")
+    check("layout rec has offsets", rec.start >= 0 and rec.end > rec.start and rec.line >= 1)
+
+
+def test_ats_creative_headings_flagged() -> None:
+    from fairhire.fitness.ats import evaluate_ats
+
+    r = evaluate_ats(parse_resume(CREATIVE_RESUME))
+    codes = {rec.code for rec in r.recommendations}
+    check("creative resume emits creative_headings", "creative_headings" in codes)
+    by = {d.key: d for d in r.dimensions}
+    check("creative resume still recovers dated roles", by["chronology"].score > 0)
+    rec = next(rec for rec in r.recommendations if rec.code == "creative_headings")
+    check("creative rec points at the heading",
+          "My Journey" in CREATIVE_RESUME[rec.start:rec.end] and rec.line >= 1)
+    check("creative resume scores below clean",
+          r.score < evaluate_ats(parse_resume(CLEAN_RESUME)).score)
+
+
+def test_ats_decorative_bullets_flagged() -> None:
+    from fairhire.fitness.ats import evaluate_ats
+
+    r = evaluate_ats(parse_resume(DECORATIVE_RESUME))
+    codes = {rec.code for rec in r.recommendations}
+    check("decorative resume emits decorative_bullets", "decorative_bullets" in codes)
+    by = {d.key: d for d in r.dimensions}
+    check("decorative bullet_style penalized", by["bullet_style"].score <= 40)
+    rec = next(rec for rec in r.recommendations if rec.code == "decorative_bullets")
+    check("decorative rec points at the bullet",
+          "➔" in DECORATIVE_RESUME[rec.start:rec.end] and rec.line >= 1)
+
+
+def test_ats_mixed_dates_flagged() -> None:
+    from fairhire.fitness.ats import evaluate_ats
+
+    r = evaluate_ats(parse_resume(MIXED_DATES_RESUME))
+    codes = {rec.code for rec in r.recommendations}
+    check("mixed dates emit mixed_dates", "mixed_dates" in codes)
+    by = {d.key: d for d in r.dimensions}
+    check("mixed dates score below month-year-only",
+          by["date_format"].score < 100)
+
+
+def test_ats_recommendation_offsets_sane() -> None:
+    from fairhire.fitness.ats import evaluate_ats
+
+    for fixture in (CLEAN_RESUME, MULTICOLUMN_RESUME, CREATIVE_RESUME,
+                    DECORATIVE_RESUME, MIXED_DATES_RESUME, RESUME):
+        r = evaluate_ats(parse_resume(fixture))
+        for rec in r.recommendations:
+            if rec.start >= 0:
+                check(f"offset slice valid ({rec.code})",
+                      0 <= rec.start < rec.end <= len(fixture) and rec.line >= 1)
+            check(f"action present ({rec.code})", bool(rec.action))
+            check(f"severity valid ({rec.code})", rec.severity in {"high", "medium", "low"})
+
+
 if __name__ == "__main__":
     print("Structured fields")
     test_structured_fields()
@@ -253,4 +437,16 @@ if __name__ == "__main__":
     test_deterministic_fallback_without_llm()
     print("Deterministic checklist path")
     test_deterministic_checklist_path()
+    print("ATS clean resume")
+    test_ats_clean_resume_scores_strong()
+    print("ATS multicolumn layout")
+    test_ats_multicolumn_layout_flagged()
+    print("ATS creative headings")
+    test_ats_creative_headings_flagged()
+    print("ATS decorative bullets")
+    test_ats_decorative_bullets_flagged()
+    print("ATS mixed dates")
+    test_ats_mixed_dates_flagged()
+    print("ATS recommendation offsets")
+    test_ats_recommendation_offsets_sane()
     print("\nAll tests passed.")

@@ -22,32 +22,28 @@ from fairhire.fitness.matcher import (
 )
 from fairhire.fitness.ner import ParsedDoc, _all_tokens, _sentence_for, find_occurrences
 
-import nltk
-from sklearn.metrics.pairwise import cosine_similarity
+from fairhire.fitness.lexicon import (
+    soft_trigger_patterns as _load_soft_triggers,
+    stopwords_with_domain_filters as _load_stopwords,
+)
+from fairhire.fitness.ner import ParsedDoc, _all_tokens, _sentence_for, find_occurrences
 
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
 
-STOPWORDS = {
-    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has", "have",
-    "in", "is", "it", "of", "on", "or", "the", "to", "with", "you", "your", "our",
-    "that", "this", "strong", "ability", "skills", "skill", "experience", "using",
-    "required", "preferred", "including", "able", "will", "can",
-}
+def _stopwords() -> frozenset[str]:
+    """NLTK English stopwords ∪ domain-noise tokens (cached by lexicon)."""
+    return _load_stopwords()
+
+
+# Back-compat alias; prefer lexicon.stopwords_with_domain_filters().
+STOPWORDS: frozenset[str] = _load_stopwords()
 WEAK_OBJECTS = {
     "software", "work", "team", "project", "projects", "system", "systems", "application",
     "applications", "support", "development", "design", "build", "new",
 }
 ACTION_STEMS = {"develop", "test", "maintain", "debug", "design", "build", "lead", "manage", "analyz", "implement", "ship", "collaborat"}
 
-_SOFT_TRIGGER_PATTERNS: list[tuple[frozenset[str], re.Pattern[str]]] = [
-    (frozenset({"analytical", "analysis", "problem", "resolve"}), re.compile(r"\b(analyz\w*|analysis|diagnos\w*|root cause|resolv\w*)\b", re.I)),
-    (frozenset({"troubleshoot", "debug", "bugs", "issues"}), re.compile(r"\b(troubleshoot\w*|debug\w*|fix\w*|reproduc\w*)\b", re.I)),
-    (frozenset({"communication", "present", "written", "documentation"}), re.compile(r"\b(communicat\w*|present\w*|document\w*|authored|wrote)\b", re.I)),
-    (frozenset({"collaborate", "collaboration", "teamwork", "cross-functional"}), re.compile(r"\b(collaborat\w*|cross[- ]functional|paired)\b", re.I)),
-    (frozenset({"leadership", "lead", "mentor", "coach"}), re.compile(r"\b(led|lead\w*|mentor\w*|coach\w*|directed|owned)\b", re.I)),
-    (frozenset({"organizational", "coordinate", "prioritize"}), re.compile(r"\b(organiz\w*|coordinat\w*|prioritiz\w*|schedul\w*)\b", re.I)),
-]
+# Soft-skill evidence patterns live in fitness/data/soft_triggers.json.
+_SOFT_TRIGGER_PATTERNS: list[tuple[frozenset[str], re.Pattern[str]]] = _load_soft_triggers()
 
 _DEGREE_STOP = {
     "bachelor", "bachelors", "b.s", "bs", "master", "masters", "m.s", "ms", "ph.d",
@@ -102,7 +98,8 @@ class HybridResult:
 
 
 def _sig_tokens(text: str) -> list[str]:
-    return [token for token in _all_tokens(text) if token not in STOPWORDS]
+    stop = _stopwords()
+    return [token for token in _all_tokens(text) if token not in stop]
 
 
 def _stem(token: str) -> str:

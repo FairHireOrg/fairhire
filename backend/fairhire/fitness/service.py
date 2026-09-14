@@ -18,13 +18,18 @@ def load_resume_text(resume_text: str | None = None, resume_path: str | None = N
     lower = resume_path.lower()
     if lower.endswith(".pdf"):
         return parse_pdf(resume_path)
+    if lower.endswith(".docx"):
+        from fairhire.fitness.docx_io import read_docx_text
+
+        with open(resume_path, "rb") as f:
+            return read_docx_text(f.read())
     if lower.endswith((".txt", ".md")):
         with open(resume_path, encoding="utf-8", errors="replace") as f:
             text = f.read().strip()
         if not text:
             raise ValueError("Resume text file is empty")
         return text
-    raise ValueError("Unsupported resume format. Use PDF or TXT.")
+    raise ValueError("Unsupported resume format. Use PDF, DOCX, or TXT.")
 
 
 def analyze_fitness(
@@ -51,7 +56,41 @@ def analyze_fitness(
     )
     payload = report.to_dict()
     payload["resume_text"] = text
+    try:
+        from fairhire.fitness.document import document_from_text
+
+        payload["document"] = document_from_text(text).to_dict()
+    except Exception:
+        payload["document"] = None
     return payload
+
+
+def score_document(document: dict[str, Any]) -> dict[str, Any]:
+    """Re-score an edited ResumeDocument: render canonical text, re-parse, re-score."""
+    from fairhire.fitness.ats import evaluate_ats
+    from fairhire.fitness.document import ResumeDocument, document_from_text, document_to_text
+    from fairhire.fitness.ner import parse_resume
+
+    doc = ResumeDocument.from_dict(document)
+    text = document_to_text(doc)
+    result = evaluate_ats(parse_resume(text))
+    return {
+        "document": doc.to_dict(),
+        "resume_text": text,
+        "ats_score": round(result.score, 1),
+        "ats_grade": result.grade,
+        "dimensions": [d.to_dict() for d in result.dimensions],
+        "recommendations": [r.to_dict() for r in result.recommendations],
+        "issues_remaining": len(result.recommendations),
+        "scorable": bool(text.strip()),
+    }
+
+
+def document_from_resume_text(resume_text: str) -> dict[str, Any]:
+    """Parse free text into a ResumeDocument plus its ATS re-score."""
+    from fairhire.fitness.document import document_from_text
+
+    return score_document(document_from_text(resume_text).to_dict())
 
 
 def analyze_upload_bytes(
@@ -64,8 +103,8 @@ def analyze_upload_bytes(
     requirements: list[dict] | None = None,
 ) -> dict[str, Any]:
     suffix = os.path.splitext(filename or "resume.pdf")[1].lower() or ".pdf"
-    if suffix not in {".pdf", ".txt", ".md"}:
-        raise ValueError("Unsupported file type. Upload PDF or TXT.")
+    if suffix not in {".pdf", ".docx", ".txt", ".md"}:
+        raise ValueError("Unsupported file type. Upload PDF, DOCX, or TXT.")
 
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(file_bytes)

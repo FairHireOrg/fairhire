@@ -6,13 +6,19 @@ import json
 import logging
 from typing import Any
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from fairhire.config import Config
-from fairhire.fitness.service import analyze_fitness, analyze_upload_bytes
+from fairhire.fitness.service import (
+    analyze_fitness,
+    analyze_upload_bytes,
+    document_from_resume_text,
+    score_document,
+)
 from fairhire.fitness.ner import parse_job_description
 from fairhire.fitness.requirements import extract_checklist, validate_checklist, requirement_id
 from fairhire.fitness.llm_extract import extract_requirements
@@ -99,6 +105,56 @@ async def analyze(
 
 class SuggestRequest(BaseModel):
     job_description: str = Field(min_length=1, max_length=30000)
+
+
+class DocumentUpdate(BaseModel):
+    document: dict[str, Any]
+
+
+@app.get("/api/document")
+async def get_document(resume_text: str = Query("", max_length=100000)) -> dict[str, Any]:
+    """Parse free text into a ResumeDocument plus its ATS re-score."""
+    if not resume_text.strip():
+        raise HTTPException(status_code=400, detail="Provide resume_text to build a document.")
+    try:
+        return await run_in_threadpool(document_from_resume_text, resume_text)
+    except Exception as exc:  # noqa: BLE001
+        logging.exception("Document parse failed")
+        raise HTTPException(status_code=500, detail="Could not build a document from the text.") from exc
+
+
+@app.put("/api/document")
+async def put_document(payload: DocumentUpdate) -> dict[str, Any]:
+    """Accept an edited ResumeDocument, re-score its canonical text, return issues."""
+    try:
+        return await run_in_threadpool(score_document, payload.document)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        logging.exception("Document scoring failed")
+        raise HTTPException(status_code=500, detail="Could not score the document.") from exc
+
+
+@app.post("/api/document/export")
+async def export_document(payload: DocumentUpdate) -> Response:
+    """Render an edited ResumeDocument as an ATS-safe .docx download."""
+    from fairhire.fitness.document import ResumeDocument
+    from fairhire.fitness.docx_io import export_document_docx
+
+    try:
+        doc = ResumeDocument.from_dict(payload.document)
+        blob = await run_in_threadpool(export_document_docx, doc)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        logging.exception("Document export failed")
+        raise HTTPException(status_code=500, detail="Could not export the document.") from exc
+    name = (doc.contact.name or "resume").strip().lower().replace(" ", "-") or "resume"
+    return Response(
+        content=blob,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{name}-ats.docx"'},
+    )
 
 
 @app.post("/api/requirements/suggest")
