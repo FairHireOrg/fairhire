@@ -1,0 +1,27 @@
+.report-header { display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 16px 24px; border-bottom: 1px solid var(--border); }
+.report-shell { padding: 32px; background: var(--muted); min-height: calc(100svh - 64px); }
+.report-paper { max-width: 800px; min-height: 1056px; margin-inline: auto; padding: 48px; gap: 12px; }
+.report-paper h2 { margin-top: 20px; margin-bottom: 4px; text-transform: capitalize; }
+.report-field { display: block; width: 100%; font-weight: inherit; }
+.resume-text-box { font-family: inherit; font-size: inherit; line-height: 1.6; padding: 4px 8px; height: auto; }
+.resume-name { font-size: 30px; font-weight: 600; }
+.resume-name input { font-size: inherit; font-weight: inherit; }
+.resume-contact { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 12px; color: var(--muted-foreground); font-size: 12px; }
+.report-entry { display: grid; gap: 4px; }
+.report-entry > button { justify-self: start; }
+.resume-role-heading { display: flex; font-weight: 600; font-size: 16px; gap: 8px; }
+.resume-role-heading input { font-weight: inherit; font-size: inherit; }
+.resume-role-meta { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 8px; color: var(--muted-foreground); font-size: 12px; }
+.resume-education-meta { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; color: var(--muted-foreground); }
+.report-sidebar[data-slot=sidebar-container] { top: 64px; height: calc(100svh - 64px); }
+.report-overview-header { padding: 24px 24px 0; flex-direction: row; align-items: center; justify-content: space-between; }
+.report-overview { padding: 24px; gap: 24px; }
+.report-dimension { display: grid; gap: 8px; }
+.report-dimension > div { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.report-dimension p, .report-overview > p { font-size: 12px; }
+.report-check { display: flex; align-items: center; gap: 16px; }
+.report-check span { font-size: 24px; }
+@media (max-width: 1100px) { .report-workspace { --sidebar-width: 23rem !important; } .report-paper { padding: 24px; } .resume-role-heading { flex-direction: column; gap: 0; } }
+@media (max-width: 767px) { .report-header { padding-inline: 16px; } .report-shell { padding: 16px; } .report-paper { padding: 20px; min-height: 900px; } .resume-contact { grid-template-columns: 1fr; } }
+@media print { .report-header, [data-slot=sidebar], .report-paper button { display: none !important; } .report-shell { padding: 0; background: white; } .report-paper { padding: 0; box-shadow: none; min-height: 0; } .resume-text-box { border: none; } }
+.report-field { font-size: inherit; }

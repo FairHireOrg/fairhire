@@ -75,6 +75,7 @@ class EducationItem:
     degree: str = ""
     school: str = ""
     year: str = ""
+    area: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -85,6 +86,7 @@ class EducationItem:
             degree=str(data.get("degree", "") or ""),
             school=str(data.get("school", "") or ""),
             year=str(data.get("year", "") or ""),
+            area=str(data.get("area", "") or ""),
         )
 
 
@@ -220,26 +222,71 @@ def _parse_experience_body(body: str) -> list[ExperienceItem]:
     return items[:20]
 
 
+_DEGREE_PHRASE_RE = re.compile(
+    r"\b(?:Bachelor|Master|Doctorate|Associate)(?:'s)?\s+of\s+(?:Science|Arts|Engineering|"
+    r"Business\s+Administration|Commerce|Education| Laws|Science\s+in\s+[\w\s]+?|[\w\s]+?)(?:\s+in\s+(.+))?$",
+    re.I,
+)
+
+
 def _parse_education_body(body: str) -> list[EducationItem]:
     items: list[EducationItem] = []
+    pending_degree: EducationItem | None = None
     for raw in body.splitlines():
         line = _clean_ws(_strip_bullet(raw))
         if not line or _is_contact_line(line):
             continue
-        degree_m = DEGREE_RE.search(line)
         year_m = re.search(r"\b(?:19|20)\d{2}\b", line)
-        degree = degree_m.group(0).strip() if degree_m else ""
         year = year_m.group(0) if year_m else ""
-        school = line
-        if degree:
-            school = (line[: degree_m.start()] + " " + line[degree_m.end() :]).strip(" \t|,–—-.") if degree_m else line
-        # Drop month-year spans whole ("May 2021" -> ""), not just the year.
-        school = re.sub(rf"\b{MONTHS}\s+(?:19|20)\d{{2}}\b", "", school, flags=re.I)
-        school = re.sub(r"\b(?:19|20)\d{2}\b", "", school).strip(" \t|,–—-.")
-        if "|" in school:
-            school = [p.strip() for p in school.split("|") if p.strip()][0]
-        if degree or school:
-            items.append(EducationItem(degree=degree or line, school=school, year=year))
+
+        # Full degree phrase first: "Bachelor of Science in Computer Science".
+        phrase = _DEGREE_PHRASE_RE.search(line)
+        if phrase:
+            if pending_degree and (pending_degree.school or pending_degree.year):
+                items.append(pending_degree)
+            degree = re.sub(r"\s+", " ", phrase.group(0).strip())
+            tail = line[phrase.end():].strip(" \t|,–—-.")
+            area = ""
+            m = re.match(r"^(?:in|of)\s+(.+)$", tail)
+            if m:
+                area = m.group(1).strip()
+            elif phrase.group(1):
+                area = phrase.group(1).strip()
+            pending_degree = EducationItem(degree=degree, year=year, area=area)
+            continue
+
+        degree_m = DEGREE_RE.search(line)
+        inst_m = re.search(r"\b(university|college|institute|institut|school|academy)\b", line, re.I)
+        if inst_m:
+            # Institution line — merge into a pending degree line or stand alone.
+            school = re.sub(r"\b(?:19|20)\d{2}\b.*$", "", line).strip(" \t|,–—-.")
+            if "|" in school:
+                school = [p.strip(" \t|,–—-.") for p in school.split("|") if p.strip(" \t|,–—-.")][0]
+            school = re.sub(rf"\b{MONTHS}\s+(?:19|20)\d{{2}}\b", "", school, flags=re.I).strip(" \t|,–—-.")
+            if pending_degree and not pending_degree.school:
+                pending_degree.school = school
+                if year and not pending_degree.year:
+                    pending_degree.year = year
+                items.append(pending_degree)
+                pending_degree = None
+            else:
+                items.append(EducationItem(school=school, year=year))
+            continue
+
+        if degree_m:
+            if pending_degree and (pending_degree.school or pending_degree.year):
+                items.append(pending_degree)
+            remainder = (line[: degree_m.start()] + " " + line[degree_m.end():]).strip(" \t|,–—-.")
+            m = re.match(r"^(?:of|in)\s+(.+)$", remainder)
+            area = m.group(1).strip() if m else ""
+            pending_degree = EducationItem(degree=degree_m.group(0).strip(), year=year, area=area)
+            continue
+
+        # Plain line with a year but no degree/school keyword: attach to pending.
+        if year and pending_degree and not pending_degree.year:
+            pending_degree.year = year
+    if pending_degree and (pending_degree.degree or pending_degree.school or pending_degree.area):
+        items.append(pending_degree)
     return items[:10]
 
 

@@ -72,6 +72,27 @@ export function suggestRequirements(jobDescription: string) {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ job_description: jobDescription }),
   });
 }
+export type InstantBoolean = { id: string; type: "boolean"; value: boolean; p_true: number; distribution: number[] };
+export type InstantChoice = { id: string; type: "choice"; chosen: string; probabilities: Record<string, number>; confidence: number; line: number; start: number; text: string };
+export type InstantScore = { id: string; type: "score"; level: number; label: string; score: number; probabilities: number[]; levels: string[] };
+export type InstantParse = {
+  engine: string;
+  parse_ms: number;
+  text_len: number;
+  booleans: InstantBoolean[];
+  line_choices: InstantChoice[];
+  scores: InstantScore[];
+  fields: Record<string, string | string[]>;
+  sections_found: Record<string, boolean>;
+  skills: { canonical: string; variant: string; category: string; start: number; end: number; sentence: number }[];
+  document: ResumeDocument | null;
+  ats_preview: { score: number; grade: string };
+};
+export function parseInstant(resumeText: string) {
+  return request<InstantParse>("/api/parse/instant", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ resume_text: resumeText }),
+  });
+}
 export function getDocument(resumeText: string) {
   return request<DocumentScore>(`/api/document?resume_text=${encodeURIComponent(resumeText)}`, { method: "GET" });
 }

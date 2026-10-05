@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import tempfile
 from typing import Any
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
@@ -13,10 +15,14 @@ from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from fairhire.config import Config
+from fairhire.fitness.jev_parse import jev_parse_text
 from fairhire.fitness.service import (
     analyze_fitness,
     analyze_upload_bytes,
     document_from_resume_text,
+    load_resume_text,
+    parse_instant_batch,
+    parse_instant_text,
     score_document,
 )
 from fairhire.fitness.ner import parse_job_description
@@ -56,6 +62,73 @@ def health() -> dict[str, Any]:
         "ai_available": cfg.llm_extraction_enabled,
         "deepseek_model": cfg.deepseek_model if cfg.llm_extraction_enabled else None,
     }
+
+
+@app.get("/api/jev/health")
+def jev_health() -> dict[str, Any]:
+    """NanoJev inference service status for the schema-fill parser."""
+    import json as _json
+    import urllib.request
+
+    from fairhire.fitness.jev_parse import NANOJEV_URL
+
+    try:
+        req = urllib.request.Request(f"{NANOJEV_URL}/api/health", method="GET")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = _json.loads(resp.read().decode("utf-8"))
+        return {"available": bool(data.get("ready")), "url": NANOJEV_URL, "detail": data}
+    except Exception as exc:  # noqa: BLE001
+        return {"available": False, "url": NANOJEV_URL, "detail": {"error": str(exc)}}
+
+
+class JevParseRequest(BaseModel):
+    resume_text: str = Field(min_length=1, max_length=100000)
+
+
+@app.post("/api/parse/jev")
+def parse_jev(payload: JevParseRequest) -> dict[str, Any]:
+    """Parse resume text into a JSON Resume schema document via NanoJev.
+
+    Deterministic NER supplies exact fields and candidate pools; the NanoJev
+    decision service ranks candidates and fills gaps. Falls back to the
+    deterministic parse when the inference service is unreachable.
+    """
+    try:
+        return jev_parse_text(payload.resume_text).to_dict()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        logging.exception("Jev parse failed")
+        raise HTTPException(status_code=500, detail="Could not parse the resume text.") from exc
+
+
+@app.post("/api/parse/jev/pdf")
+async def parse_jev_pdf(resume: UploadFile = File(...)) -> dict[str, Any]:
+    """Upload a PDF, extract layout text, parse into JSON Resume via NanoJev."""
+    data = await resume.read(10 * 1024 * 1024 + 1)
+    if len(data) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Resume uploads must be 10 MB or smaller.")
+    if not data:
+        raise HTTPException(status_code=400, detail="Uploaded resume is empty")
+    suffix = os.path.splitext(resume.filename or "resume.pdf")[1].lower() or ".pdf"
+    if suffix not in {".pdf", ".docx", ".txt", ".md"}:
+        raise HTTPException(status_code=400, detail="Unsupported file type. Upload PDF, DOCX, TXT, or Markdown.")
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(data)
+        tmp_path = tmp.name
+    try:
+        text = load_resume_text(resume_path=tmp_path)
+        return jev_parse_text(text).to_dict()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        logging.exception("Jev PDF parse failed")
+        raise HTTPException(status_code=500, detail="Could not parse the uploaded file.") from exc
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
 
 
 @app.post("/api/analyze")
@@ -111,6 +184,41 @@ class DocumentUpdate(BaseModel):
     document: dict[str, Any]
 
 
+class InstantParseRequest(BaseModel):
+    resume_text: str = Field(min_length=1, max_length=100000)
+
+
+class InstantBatchRequest(BaseModel):
+    texts: list[str] = Field(min_length=1, max_length=25)
+
+
+@app.post("/api/parse/instant")
+async def parse_instant(payload: InstantParseRequest) -> dict[str, Any]:
+    """NanoJev-style instant parse from raw text: one pass, distributions out."""
+    if not payload.resume_text.strip():
+        raise HTTPException(status_code=400, detail="Provide resume_text to parse.")
+    try:
+        return await run_in_threadpool(parse_instant_text, payload.resume_text)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        logging.exception("Instant parse failed")
+        raise HTTPException(status_code=500, detail="Could not parse the resume text.") from exc
+
+
+@app.post("/api/parse/instant/batch")
+async def parse_instant_batch_route(payload: InstantBatchRequest) -> dict[str, Any]:
+    """Batch independent resume texts — one backbone pass each, no cross-talk."""
+    try:
+        results = await run_in_threadpool(parse_instant_batch, payload.texts)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        logging.exception("Instant batch parse failed")
+        raise HTTPException(status_code=500, detail="Could not parse the batch.") from exc
+    return {"engine": "nanojev-instant", "count": len(results), "results": results}
+
+
 @app.get("/api/document")
 async def get_document(resume_text: str = Query("", max_length=100000)) -> dict[str, Any]:
     """Parse free text into a ResumeDocument plus its ATS re-score."""
@@ -150,6 +258,27 @@ async def export_document(payload: DocumentUpdate) -> Response:
         logging.exception("Document export failed")
         raise HTTPException(status_code=500, detail="Could not export the document.") from exc
     name = (doc.contact.name or "resume").strip().lower().replace(" ", "-") or "resume"
+    return Response(
+        content=blob,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{name}-ats.docx"'},
+    )
+
+
+@app.post("/api/jev/export")
+def export_jev(payload: DocumentUpdate) -> Response:
+    """Render a JSON Resume schema document as an ATS-safe .docx download."""
+    from fairhire.fitness.docx_io import export_jsonresume_docx
+
+    doc = payload.document
+    if not isinstance(doc, dict) or not doc.get("basics"):
+        raise HTTPException(status_code=400, detail="Provide a JSON Resume document with a basics section.")
+    try:
+        blob = export_jsonresume_docx(doc)
+    except Exception as exc:  # noqa: BLE001
+        logging.exception("JSON Resume export failed")
+        raise HTTPException(status_code=500, detail="Could not export the document.") from exc
+    name = str((doc.get("basics") or {}).get("name") or "resume").strip().lower().replace(" ", "-") or "resume"
     return Response(
         content=blob,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",

@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Generated from the installed pdfjs-dist version by predev/prebuild.
+/public/pdfjs/
+
+# Browser verification output.
+/test-results/
+/playwright-report/

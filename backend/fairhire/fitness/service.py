@@ -93,6 +93,19 @@ def document_from_resume_text(resume_text: str) -> dict[str, Any]:
     return score_document(document_from_text(resume_text).to_dict())
 
 
+def parse_instant_text(resume_text: str) -> dict[str, Any]:
+    """NanoJev-style instant parse: single pass, full distributions, no LLM."""
+    from fairhire.fitness.nanojev import parse_instant
+
+    return parse_instant(resume_text)
+
+
+def parse_instant_batch(texts: list[str]) -> list[dict[str, Any]]:
+    from fairhire.fitness.nanojev import parse_batch
+
+    return parse_batch(texts)
+
+
 def analyze_upload_bytes(
     file_bytes: bytes,
     filename: str,
