@@ -1,0 +1,33 @@
+Priya Natarajan
+priya.n@example.org
+Austin, Texas
+https://priya.dev
+
+OBJECTIVE
+Data analyst seeking a role where statistical rigor and clear storytelling are valued.
+
+PROFESSIONAL EXPERIENCE
+
+Data Analyst
+Acme Analytics, Austin, TX
+January 2021 - Present
+• Built dashboards in Tableau that were adopted by sales leadership and used in weekly
+planning meetings across four regions
+• Automated a manual reporting process with Python, saving 10 hours per week
+
+Research Assistant
+University of Texas at Austin
+2018 - 2020
+• Analyzed survey data from 1,200 participants using R
+
+ACADEMIC BACKGROUND
+University of Texas at Austin
+B.A. Statistics, 2020
+
+HONORS & AWARDS
+Dean's List, 2018 - 2020
+National Merit Scholar
+
+VOLUNTEERING
+Code for Austin
+Volunteer data analyst, 2022 - Present

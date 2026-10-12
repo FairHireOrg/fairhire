@@ -13,3 +13,6 @@ dist/
 build/
 .DS_Store
 .env
+
+# local browser-test artifacts (may contain personal documents)
+.playwright-mcp/

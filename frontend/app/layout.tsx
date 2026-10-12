@@ -1,35 +1,26 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Inter, JetBrains_Mono, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
-import { TooltipProvider } from "@/components/ui/tooltip";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const display = Fraunces({ variable: "--f-display", subsets: ["latin"], axes: ["opsz"] });
+const sans = Inter({ variable: "--f-sans", subsets: ["latin"] });
+const page = Source_Sans_3({ variable: "--f-page", subsets: ["latin"] });
+const mono = JetBrains_Mono({ variable: "--f-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "FairHire | Understand your resume match",
+  title: "FairHire — a resume every parser can read",
   description:
-    "Compare your resume with a job using a stable requirement checklist, verifiable evidence, and clear improvement suggestions.",
+    "Upload your resume, see exactly what an applicant tracking system reads, and fix what it can't — live, with the same answer every time.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+/** Applies a saved theme before first paint so the page never flashes the wrong one. */
+const THEME_INIT = `try{var t=localStorage.getItem("fairhire:theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} bg-background`}
-    >
-      <body className="min-h-dvh antialiased"><TooltipProvider>{children}</TooltipProvider></body>
+    <html lang="en" suppressHydrationWarning className={`${display.variable} ${sans.variable} ${page.variable} ${mono.variable}`}>
+      <head><script dangerouslySetInnerHTML={{ __html: THEME_INIT }} /></head>
+      <body>{children}</body>
     </html>
   );
 }

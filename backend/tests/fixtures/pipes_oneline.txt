@@ -1,0 +1,24 @@
+Morgan Rivera
+Senior Backend Engineer
+morgan.rivera@example.com | +1 (415) 555-0132 | San Francisco, CA | linkedin.com/in/morganrivera
+
+Professional Summary
+Backend engineer building reliable services for small businesses. 6 years of experience with Python and distributed systems.
+
+Work Experience
+Senior Backend Engineer | Harbor Software | 2022 - 2026
+- Built Python services that reduced processing time by 32%.
+- Designed REST APIs for a customer reporting platform.
+Backend Engineer, Brightline Labs, 2019 - 2022
+- Maintained PostgreSQL databases serving 2M requests per day.
+- Wrote integration tests that cut regressions by half.
+
+Education
+Bachelor of Science in Computer Science, River Valley University, 2015 - 2019
+
+Certifications
+AWS Certified Solutions Architect
+Certified Kubernetes Administrator, 2023
+
+Skills
+Python, PostgreSQL, REST APIs, Docker, Kubernetes, Git, AWS

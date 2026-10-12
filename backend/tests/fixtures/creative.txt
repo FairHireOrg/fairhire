@@ -1,0 +1,19 @@
+ALEX KIM
+alex.kim@example.com · 312-555-0100 · Chicago, IL
+
+ABOUT ME
+Designer who ships.
+
+WHERE I'VE WORKED
+Product Designer — Figma Labs — 2021 – Present
+Led the redesign of the comments experience, raising weekly engagement 14%.
+Designed and shipped a component library used by 30 engineers across 4 teams.
+
+UX Designer — Pixel Co. — 2018 – 2021
+Created onboarding flows that improved activation by 9%.
+
+WHAT I KNOW
+Figma, Sketch, Prototyping, User Research, HTML, CSS
+
+SCHOOL
+School of the Art Institute of Chicago — BFA Design — 2018

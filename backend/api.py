@@ -131,6 +131,68 @@ async def parse_jev_pdf(resume: UploadFile = File(...)) -> dict[str, Any]:
             pass
 
 
+class ResumePayload(BaseModel):
+    document: dict[str, Any]
+
+
+class ExportPayload(ResumePayload):
+    format: str = Field("docx", pattern="^(docx|txt)$")
+
+
+@app.post("/api/resume/import")
+async def resume_import(
+    resume: UploadFile | None = File(None),
+    resume_text: str | None = Form(None),
+) -> dict[str, Any]:
+    """Upload (PDF/DOCX/TXT/MD) or paste text -> canonical document + ATS readout."""
+    from fairhire.resume.service import import_resume
+
+    try:
+        data = None
+        name = ""
+        if resume is not None and resume.filename:
+            data = await resume.read(10 * 1024 * 1024 + 1)
+            name = resume.filename
+        if resume_text is not None and len(resume_text) > 100000:
+            raise ValueError("Pasted resumes must be under 100,000 characters.")
+        return await run_in_threadpool(import_resume, data, name, resume_text)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        logging.exception("Resume import failed")
+        raise HTTPException(status_code=500, detail="Could not read this resume. Try pasting the text instead.") from exc
+
+
+@app.post("/api/resume/score")
+async def resume_score(payload: ResumePayload) -> dict[str, Any]:
+    """Re-score an edited document. Pure and deterministic: same document, same result."""
+    from fairhire.resume.model import Resume
+    from fairhire.resume.service import score_resume
+
+    try:
+        return await run_in_threadpool(score_resume, Resume.from_dict(payload.document))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/resume/export")
+async def resume_export(payload: ExportPayload) -> Response:
+    from fairhire.resume.export import export_docx, export_txt
+    from fairhire.resume.model import Resume
+
+    try:
+        resume = Resume.from_dict(payload.document)
+        if payload.format == "txt":
+            blob, media, ext = export_txt(resume), "text/plain; charset=utf-8", "txt"
+        else:
+            blob = await run_in_threadpool(export_docx, resume)
+            media, ext = "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "docx"
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    name = "-".join((resume.contact.name or "resume").lower().split()) or "resume"
+    return Response(content=blob, media_type=media, headers={"Content-Disposition": f'attachment; filename="{name}.{ext}"'})
+
+
 @app.post("/api/analyze")
 async def analyze(
     job_description: str = Form(""),

@@ -1,0 +1,27 @@
+                                       Jane Q. Doe
+          (555) 123-4567 ▪ jane.doe@example.com ▪ linkedin.com/in/janedoe ▪ github.com/janedoe
+
+EDUCATION
+Stanford University                                                                      Stanford, CA
+Master of Science in Computer Science, GPA: 3.9/4.0                         Aug. 2022 – May 2024
+University of Michigan                                                                  Ann Arbor, MI
+Bachelor of Science in Computer Engineering                                  Aug. 2018 – May 2022
+
+EXPERIENCE
+Software Engineer                                                                  June 2024 – Present
+Stripe                                                                                      San Francisco, CA
+    • Built a payments reconciliation service in Go handling 2M events per day
+    • Cut p99 latency by 38% by redesigning the caching layer around Redis
+Software Engineering Intern                                                    May 2023 – Aug. 2023
+Google                                                                                      Mountain View, CA
+    • Implemented a Kubernetes operator used by 12 internal teams
+    • Wrote design docs and presented results to a 40-person audience
+
+PROJECTS
+Gitlet | Java, Git                                                                          Jan. 2021 – May 2021
+    • Developed a version control system supporting branching and merging with 1,500 lines of code
+
+TECHNICAL SKILLS
+Languages: Java, Python, C/C++, SQL (Postgres), JavaScript, HTML/CSS
+Frameworks: React, Node.js, Flask, JUnit, WordPress
+Developer Tools: Git, Docker, GCP, VS Code, Visual Studio, PyCharm

@@ -59,6 +59,7 @@ _EXTRACTION_WEIGHTS = {
 }
 
 _CONTACT_LINES = 15  # body lines ATS parsers scan for the contact block
+_HEADER_SCAN = 8  # non-empty lines searched for the end of the name/headline/contact header
 
 _CONTACT_RE = {
     "email": re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}"),
@@ -182,22 +183,67 @@ def _line_of(spans: list[tuple[int, str]], offset: int) -> int:
     return -1
 
 
+# Lowercase particles that legitimately appear inside names ("Ana de la Cruz", "Ludwig van Beethoven").
+_NAME_PARTICLES = frozenset({
+    "de", "del", "della", "di", "da", "dos", "das", "do", "du", "la", "le", "van", "von", "der", "den",
+    "ten", "ter", "bin", "ibn", "al", "el", "y", "e", "af",
+})
+# Document titles that sit above the real name and are not it.
+_NAME_JUNK = frozenset({"resume", "résumé", "cv", "curriculum vitae"})
+_NAME_WORD_RE = re.compile(r"[^\W\d_][^\W\d_.'’\-]*(?:[.'’\-][^\W\d_]+)*\.?")
+
+
+def _looks_like_name(line: str) -> bool:
+    """One to five capitalised words. Case-agnostic: 'JORDAN LEE', 'Jordan Lee' and 'Ana de la Cruz' all pass.
+
+    Digits, '@', and long phrases are rejected, as are section headings and document titles.
+    """
+    words = line.replace(",", " ").split()
+    if not 1 <= len(words) <= 5 or re.search(r"[,.:;]$", line):
+        return False
+    for w in words:
+        if not _NAME_WORD_RE.fullmatch(w):
+            return False
+        if w[0].isupper() or w.lower() in _NAME_PARTICLES:
+            continue
+        return False
+    return True
+
+
 def _detect_name(text: str) -> str | None:
-    """Low-risk heuristic: first short, capitalized, punctuation-light line."""
+    """First short, capitalised, punctuation-light line that is not contact info or a heading."""
+    known = {a for group in section_aliases().values() for a in group}
     for line in text.splitlines():
         line = line.strip()
         if not line:
             continue
         if _CONTACT_RE["email"].search(line) or _CONTACT_RE["url"].search(line):
             continue
-        if len(line) > 40 or len(line.split()) > 5:
+        if len(line) > 40:
             continue
-        letters = re.sub(r"[^A-Za-z ]", "", line)
-        if not letters.strip():
+        norm = _normalize_heading(line.rstrip(":"))
+        if norm in known or norm in _NAME_JUNK:
             continue
-        if letters.strip().istitle() and not re.search(r"[,.]$", line):
+        if _looks_like_name(line):
             return line
     return None
+
+
+def _header_block_starts(text: str) -> set[int]:
+    """Offsets of the lines that form the document's header: name, headline and contact details.
+
+    The header runs from the top through the last contact line (email, phone or link) among the first
+    few non-empty lines. A resume with no contact line has just its first line (the name) as header.
+    Nothing in this block is a section heading, however heading-shaped it looks.
+    """
+    lines = [(start, ln) for start, ln in _line_spans(text) if ln.strip()]
+    if not lines:
+        return set()
+    last = 0
+    for i, (_, ln) in enumerate(lines[:_HEADER_SCAN]):
+        if any(rx.search(ln) for rx in (_CONTACT_RE["email"], _CONTACT_RE["phone"], _CONTACT_RE["url"])):
+            last = i
+    return {start for start, _ in lines[: last + 1]}
 
 
 def _nonempty_lines(text: str) -> list[tuple[int, str]]:
@@ -207,7 +253,7 @@ def _nonempty_lines(text: str) -> list[tuple[int, str]]:
 def _creative_headings(text: str) -> list[tuple[int, str]]:
     """Heading-shaped lines that match no whitelisted section alias.
 
-    Skips the contact block (name/email/phone/URL lines) and any line with
+    Skips the header block (name, headline, contact lines) and any line with
     digits — real headings almost never contain them, while role and
     education lines often look title-cased.
     """
@@ -215,10 +261,13 @@ def _creative_headings(text: str) -> list[tuple[int, str]]:
     known = {a for group in aliases.values() for a in group}
     name = _detect_name(text)
     role_re = role_words_pattern()
+    header = _header_block_starts(text)
     out: list[tuple[int, str]] = []
     for start, line in _line_spans(text):
         stripped = line.strip()
         if not stripped or not _is_heading(line):
+            continue
+        if start in header:
             continue
         if _CONTACT_RE["email"].search(stripped) or _CONTACT_RE["phone"].search(stripped):
             continue
