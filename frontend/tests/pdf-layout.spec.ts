@@ -33,7 +33,6 @@ test("PDF overlays preserve all original pages and edits survive scoring, reload
   const fixtureDocument = { contact: { name: "Fixture", email: "", phone: "", location: "", linkedin: "", github: "" }, summary: "", experience: [], education: [], skills: [], certifications: [], projects: [] };
   const response = { document: fixtureDocument, resume_text: "Fixture", job_description: "", ats_score: 75, ats_grade: "Good", scorable: true, dimensions: [], recommendations: [], sections_found: {}, resume_fields: {}, skills: [], keyword_groups: [], keyword_coverage: { matched: 0, total: 0 } };
   await page.route("**/api/analyze", async route => { analyses.push(route.request().postData() ?? ""); await route.fulfill({ json: response }); });
-  await page.route("**/api/parse/jev", route => route.fulfill({ json: { resume: { basics: { name: "Fixture" } }, fields: {} } }));
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(process.env.TEST_BASE_URL ?? "http://localhost:3000");
   await page.getByLabel("Upload resume", { exact: true }).setInputFiles({ name: "generic-layouts.pdf", mimeType: "application/pdf", buffer: layoutFixture() });

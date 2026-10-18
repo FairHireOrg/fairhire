@@ -13,9 +13,8 @@ import { Card } from "@/components/ui/card";
 import Link from "next/link";
 import { Sidebar, SidebarContent, SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
-import { parseJevText } from "@/lib/jev";
 import { storeResumeSource } from "@/lib/resume-source";
-import { standardizeResume, REPORT_KEY } from "@/lib/report";
+import { REPORT_KEY } from "@/lib/report";
 import { useRef, useState } from "react";
 import { ArrowRight, ArrowUpRight, CheckCircle, DownloadSimple, FileText, Files, Info, ListChecks, MagnifyingGlass, PencilLine, Plus, Question, ShieldCheck, Trash, UploadSimple, X, } from "@phosphor-icons/react";
 import { analyzeFitness, exportDocument, putDocument, type AtsDimension, type AtsRecommendation, type EducationItem, type ExperienceItem, type FitnessResult, type KeywordGroup, type ResumeDocument, } from "@/lib/api";
@@ -176,8 +175,7 @@ export default function Workspace() {
                 file: mode === "upload" ? activeFile : null,
                 resumeText: mode === "paste" ? resume : undefined,
             });
-            const parsed = await parseJevText(response.resume_text);
-            const document = standardizeResume(parsed.resume, response.document);
+            const document = response.document;
             const sourcePdfId = mode === "upload" && activeFile && /\.pdf$/i.test(activeFile.name) ? await storeResumeSource(activeFile) : undefined;
             sessionStorage.setItem(REPORT_KEY, JSON.stringify({ ...response, document, sourcePdfId }));
             router.push("/report");

@@ -7,13 +7,12 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { parseJevText } from "@/lib/jev";
 import { readResumeSource, writeResumeSource, type ResumeSource, type PdfEdits } from "@/lib/resume-source";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import "./report.css";
 import { useEffect, useState, useCallback, useRef, type CSSProperties } from "react";
 import { analyzeFitness, exportDocument, putDocument, type ResumeDocument } from "@/lib/api";
-import { REPORT_KEY, standardizeResume, type ResumeReport } from "@/lib/report";
+import { REPORT_KEY, type ResumeReport } from "@/lib/report";
 const PdfLayoutEditor = dynamic(() => import("@/components/PdfLayoutEditor"), { ssr: false });
 export default function ReportPage() {
     const [report, setReport] = useState<ResumeReport | null>(null);
@@ -79,8 +78,8 @@ export default function ReportPage() {
             if (source && sourceFile) {
                 const hasEdits = Object.keys(pendingPdfEdits.current).length > 0;
                 const refreshed = await analyzeFitness({ jobDescription: report.job_description, ...(hasEdits ? { resumeText: pdfText.current } : { file: sourceFile }) });
-                const parsed = await parseJevText(refreshed.resume_text);
-                exportSource = standardizeResume(parsed.resume, refreshed.document);
+                if (!refreshed.document) throw new Error("Could not read the updated resume.");
+                exportSource = refreshed.document;
                 next = { ...refreshed, document: exportSource, sourcePdfId: source.id };
                 const saved = { ...source, edits: pendingPdfEdits.current };
                 await writeResumeSource(saved);

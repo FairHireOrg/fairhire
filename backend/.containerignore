@@ -1,0 +1,14 @@
+# Secrets: pass at run time with --env-file instead.
+.env
+# Research data and artifacts the API doesn't load.
+*.csv
+*.jsonl
+*.pt
+plots/
+tests/
+# Local tooling.
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.ruff_cache/
