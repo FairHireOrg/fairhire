@@ -8,7 +8,7 @@ const page = Source_Sans_3({ variable: "--f-page", subsets: ["latin"] });
 const mono = JetBrains_Mono({ variable: "--f-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "FairHire — a resume every parser can read",
+  title: "FairHire — a resume every ATS can read",
   description:
     "Upload your resume, see exactly what an applicant tracking system reads, and fix what it can't — live, with the same answer every time.",
 };

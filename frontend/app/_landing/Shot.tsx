@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { ArrowArcLeft, ArrowArcRight, Plus } from "@phosphor-icons/react";
 import { DEMO_DOC, DEMO_SCORED } from "../_lib/demo";
 import { ThemeToggle } from "../_shared/ThemeToggle";
+import { Wordmark } from "../_shared/Wordmark";
 import { ChecksPanel } from "../_editor/Review";
 import { ResumePage } from "../_editor/Page";
 import "../_editor/editor.css";
@@ -24,7 +25,7 @@ function ScaleToFit({ children }: { children: React.ReactNode }) {
     return () => ro.disconnect();
   }, []);
   return (
-    <div ref={ref} className="lp-fit" style={{ height: H * scale }}>
+    <div ref={ref} className="w-full overflow-hidden rounded-2xl border border-rule bg-bg shadow-(--shadow)" style={{ height: H * scale }}>
       <div style={{ width: W, height: H, transform: `scale(${scale})`, transformOrigin: "top left" }}>{children}</div>
     </div>
   );
@@ -38,11 +39,11 @@ const noop = () => {};
  */
 export function EditorShot() {
   return (
-    <div className="lp-shot" aria-hidden="true">
+    <div className="w-full" aria-hidden="true">
       <ScaleToFit>
-        <div className="ed lp-shot-app" inert>
+        <div className="ed pointer-events-none h-full select-none" inert>
           <header className="ed-bar">
-            <span className="wordmark"><span className="wordmark-mark">F</span><span className="bar-brand">FairHire</span></span>
+            <Wordmark labelClassName="bar-brand" />
             <span className="bar-file">jordan-lee-resume.pdf</span>
             <span className="bar-spacer" />
             <ThemeToggle />

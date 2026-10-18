@@ -1,8 +1,8 @@
 "use client";
 import { useRef, useState } from "react";
-import Link from "next/link";
 import { FileText, UploadSimple, WarningCircle } from "@phosphor-icons/react";
 import { SAMPLE } from "../_lib/doc";
+import { Wordmark } from "../_shared/Wordmark";
 
 const ACCEPT = ".pdf,.docx,.txt,.md,.tex";
 
@@ -17,7 +17,7 @@ export function ImportScreen({ busy, error, onFile, onText, onBlank }: {
   return (
     <div className="import">
       <div className="import-inner">
-        <Link href="/" className="wordmark import-brand"><span className="wordmark-mark">F</span>FairHire</Link>
+        <Wordmark href="/" className="import-brand" />
         <h1 className="display">Start with the resume<br />you have.</h1>
         <p className="import-lede">We’ll rebuild it as structured fields and show you what a tracking system reads.</p>
 

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowArcLeft, ArrowArcRight, CheckCircle, WarningCircle } from "@phosphor-icons/react";
 import { exportDocument } from "../_lib/api";
 import { newSection } from "../_lib/doc";
@@ -8,6 +8,7 @@ import { takeFile } from "../_lib/handoff";
 import type { SectionKind, Severity } from "../_lib/types";
 import { useResume } from "../_lib/useResume";
 import { ThemeToggle } from "../_shared/ThemeToggle";
+import { Wordmark } from "../_shared/Wordmark";
 import { useJump } from "./Fields";
 import { ImportScreen } from "./ImportScreen";
 import { AddSectionMenu, ExportMenu, ResetConfirm, type ExportKind } from "./Menus";
@@ -25,19 +26,29 @@ export default function Editor() {
   const [pane, setPane] = useState<Pane>("edit");
   const [busy, setBusy] = useState<ExportKind | null>(null);
   const [toast, setToast] = useState("");
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
 
-  // /editor?new=1 skips the import screen; a file dropped on the landing page is picked up here.
+  // With no saved draft, open what the landing page asked for instead of the import screen:
+  // a file dropped there, or a blank page for /editor?new=1.
+  const router = useRouter();
+  const startBlankRequested = useSearchParams().has("new");
   const { status, startBlank, fromFile } = r;
   useEffect(() => {
-    if (status !== "empty") return;
+    if (status === "loading") return;
     const file = takeFile();
-    if (file) { fromFile(file); return; }
-    if (new URLSearchParams(window.location.search).get("new")) startBlank();
-  }, [status, startBlank, fromFile]);
+    if (status === "empty") {
+      if (file) fromFile(file);
+      else if (startBlankRequested) startBlank();
+    }
+    // Drop the one-shot flag so "Start over" later lands on the import screen.
+    if (startBlankRequested) router.replace("/editor");
+  }, [status, startBlankRequested, startBlank, fromFile, router]);
 
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(""), 3800);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const issues: Issues = useMemo(() => {
     const out: Issues = {};
@@ -55,12 +66,6 @@ export default function Editor() {
   }
 
   const { doc, update } = r;
-  const flash = (msg: string) => {
-    setToast(msg);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(""), 3800);
-  };
-
   const addSection = (kind: SectionKind) => {
     const s = newSection(kind);
     update(d => ({ ...d, sections: [...d.sections, s] }));
@@ -80,7 +85,7 @@ export default function Editor() {
       a.download = name;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 4000);
-      flash(`${name} downloaded`);
+      setToast(`${name} downloaded`);
     } catch (e) {
       r.setError(e instanceof Error ? e.message : "Export failed.");
     } finally { setBusy(null); }
@@ -93,7 +98,7 @@ export default function Editor() {
   return (
     <div className="ed" data-pane={pane}>
       <header className="ed-bar">
-        <Link href="/" className="wordmark"><span className="wordmark-mark">F</span><span className="bar-brand">FairHire</span></Link>
+        <Wordmark href="/" labelClassName="bar-brand" />
         <span className="bar-file" title={r.meta.filename}>{r.meta.filename || "Untitled resume"}</span>
         <span className="bar-status" role="status" aria-live="polite">{r.scoring ? "Checking…" : "Saved in this browser"}</span>
         <span className="bar-spacer" />

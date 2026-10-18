@@ -23,9 +23,11 @@ export function LandingDrop() {
   };
 
   return (
-    <div className="lp-drop-wrap">
+    <div className="grid justify-items-center gap-5">
       <label
-        className={`lp-drop ${over ? "is-over" : ""}`}
+        className={`grid w-full cursor-pointer justify-items-center gap-1 rounded-(--r-lg) px-6 py-10 text-center transition-[border-color,background] duration-120 focus-within:shadow-(--focus) ${
+          over ? "border-2 border-accent bg-accent-soft" : "border-[1.5px] border-dashed border-rule-strong bg-surface hover:border-ink-3"
+        }`}
         onDragOver={e => { e.preventDefault(); setOver(true); }}
         onDragLeave={() => setOver(false)}
         onDrop={e => { e.preventDefault(); setOver(false); take(e.dataTransfer.files[0]); }}
@@ -34,12 +36,12 @@ export function LandingDrop() {
           ref={input} type="file" accept={ACCEPT} className="sr-only" aria-label="Choose your resume file"
           onChange={e => { take(e.target.files?.[0]); e.target.value = ""; }}
         />
-        <UploadSimple size={30} aria-hidden="true" />
-        <span className="lp-drop-title">{over ? "Release to upload" : "Drop your resume here"}</span>
-        <span className="lp-drop-link">or choose a file</span>
-        <span className="lp-drop-types">PDF, DOCX, plain text or Markdown</span>
+        <UploadSimple size={30} aria-hidden="true" className="mb-1.5 text-accent-text" />
+        <span className="text-[19px] font-semibold">{over ? "Release to upload" : "Drop your resume here"}</span>
+        <span className="font-semibold text-accent-text">or choose a file</span>
+        <span className="mt-1.5 text-[13px] text-ink-3">PDF, DOCX, plain text or Markdown</span>
       </label>
-      <div className="lp-drop-alt">
+      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3">
         <Link href="/editor" className="btn btn-primary">Open the editor</Link>
         <Link href="/editor?new=1" className="link-btn">or start from a blank page</Link>
       </div>

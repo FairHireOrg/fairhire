@@ -5,6 +5,46 @@
  * dark values are the "dark" folder. The accent is the single brand color; its hover,
  * soft and text variants are derived from it so changing `--accent` retunes everything.
  */
+/* No preflight: the editor and resume sheet rely on browser defaults (lists, headings) that it resets. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* `dark:` follows the system unless <html data-theme> pins it, matching the tokens below. */
+@custom-variant dark {
+  :root[data-theme="dark"] & { @slot; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) & { @slot; } }
+}
+
+/* Exposes the design tokens as Tailwind colors (bg-surface, text-ink-2, border-rule, ...). */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-tint: var(--tint);
+  --color-sunken: var(--sunken);
+  --color-surface: var(--surface);
+  --color-canvas: var(--canvas);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-page: var(--page);
+  --color-doc-ink: var(--doc-ink);
+  --color-doc-ink-2: var(--doc-ink-2);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --font-sans: var(--f-sans), system-ui, sans-serif;
+}
+
 :root {
   /* Follows the system by default; <html data-theme="light|dark"> pins it (see ThemeToggle). */
   color-scheme: light dark;
@@ -53,6 +93,7 @@
 :root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="dark"] { color-scheme: dark; }
 
+@layer base {
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
@@ -69,7 +110,9 @@ a { color: inherit; }
 button, input, textarea, select { font: inherit; color: inherit; }
 :focus-visible { outline: none; box-shadow: var(--focus); border-radius: var(--r); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
 
+@layer components {
 .display { font-family: var(--font-display); font-weight: 500; letter-spacing: -0.015em; font-optical-sizing: auto; }
 .mono { font-family: var(--f-mono), ui-monospace, monospace; }
 
@@ -102,12 +145,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 .link-btn { border: 0; background: none; padding: 0; color: var(--accent-text); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 
-.wordmark { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 600; letter-spacing: -0.01em; }
-.wordmark-mark {
-  width: 28px; height: 28px; border-radius: 7px; background: var(--ink); color: var(--bg);
-  display: grid; place-items: center; font-family: var(--font-display); font-size: 18px; line-height: 1;
-}
-
 /* Floating menus and popovers (export, add section, start over). */
 .menu {
   position: absolute; z-index: 30; min-width: 240px; padding: 6px;
@@ -129,3 +166,4 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .theme-toggle button:hover { color: var(--ink); }
 .theme-toggle button[aria-checked="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(11, 18, 32, 0.14); }
+}
