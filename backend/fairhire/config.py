@@ -1,6 +1,6 @@
 """Config for FairHire.
 
-Reads environment variables, then a `.env` file in this directory if present.
+Reads a `.env` file if present, then environment variables, then built-in defaults.
 DeepSeek extraction is optional: scoring/matching is always deterministic, and
 the LLM only supplies structured *requirements* when a key is configured.
 """
@@ -10,31 +10,18 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
+from dotenv import load_dotenv
 
-def _load_dotenv(path: str | None = None) -> None:
-    """Minimal .env loader (no dependency). Does not override existing env."""
-    candidates = [
-        path,
-        os.path.join(os.path.dirname(__file__), "..", ".env"),  # backend/.env
-        os.path.join(os.path.dirname(__file__), "..", "..", ".env"),  # repo root
-    ]
-    for candidate in candidates:
-        if not candidate or not os.path.exists(candidate):
-            continue
-        with open(candidate, encoding="utf-8") as f:
-            for raw in f:
-                line = raw.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                key, _, value = line.partition("=")
-                key = key.strip()
-                value = value.strip().strip('"').strip("'")
-                if key and key not in os.environ:
-                    os.environ[key] = value
+
+# Precedence: `.env` file, then the process environment, then the defaults below.
+# backend/.env first, falling back to the repo root.
+for _candidate in (
+    os.path.join(os.path.dirname(__file__), "..", ".env"),
+    os.path.join(os.path.dirname(__file__), "..", "..", ".env"),
+):
+    if os.path.exists(_candidate):
+        load_dotenv(_candidate, override=True)
         break
-
-
-_load_dotenv()
 
 
 @dataclass

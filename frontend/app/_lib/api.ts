@@ -1,6 +1,6 @@
 import type { Imported, ResumeDoc, Scored } from "./types";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://144.126.209.214:8000";
 const UNREACHABLE = "Can't reach the FairHire service. Make sure the backend is running, then try again.";
 
 async function call<T>(path: string, init: RequestInit, parse: (r: Response) => Promise<T>): Promise<T> {
