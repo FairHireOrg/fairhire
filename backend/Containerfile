@@ -27,4 +27,5 @@ RUN useradd --system --uid 10001 app
 USER app
 
 EXPOSE 8000
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
+# Vercel routes to $PORT; default to 8000 for local podman runs.
+CMD ["sh", "-c", "exec uvicorn api:app --host 0.0.0.0 --port ${PORT:-8000}"]

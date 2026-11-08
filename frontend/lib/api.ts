@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://144.126.209.214:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 export type Quality = "exact" | "contextual" | "family";
 export type Requirement = { id: string; text: string; kind: string; required: boolean; source_text: string; jd_start: number; jd_end: number };
 export type KeywordGroup = { term: string; kind: string; required: boolean; matched: boolean; resume_term: string | null };
