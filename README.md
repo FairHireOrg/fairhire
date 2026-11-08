@@ -44,6 +44,8 @@ cp .env.example .env        # add your FAIRHIRE_DEEPSEEK_KEY (optional)
 uvicorn api:app --reload --host 127.0.0.1 --port 8000
 ```
 
+To host it on PythonAnywhere, see [docs/deploy-pythonanywhere.md](docs/deploy-pythonanywhere.md).
+
 Optional env vars:
 
 - `FAIRHIRE_DEEPSEEK_URL=https://api.deepseek.com`
